@@ -1,0 +1,61 @@
+{
+  "version": "ml_v1.0.0",
+  "training_date": "2026-11-11T15:20:25.419359+00:00",
+  "model_type": "RandomForest + IsolationForest",
+  "data_seed": 42,
+  "feature_list": [
+    "current_amount",
+    "velocity_1m_count",
+    "velocity_1h_count",
+    "velocity_24h_count",
+    "velocity_24h_amount",
+    "avg_amount",
+    "std_amount",
+    "z_score",
+    "is_first_time_receiver",
+    "is_new_device",
+    "is_new_ip",
+    "impossible_travel",
+    "is_unusual_hour",
+    "total_structuring_count",
+    "is_round_number",
+    "recent_failures_1h",
+    "pass_through_detected"
+  ],
+  "metrics": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "roc_auc": 1.0,
+    "pr_auc": 1.0,
+    "confusion_matrix": {
+      "tn": 143,
+      "fp": 0,
+      "fn": 0,
+      "tp": 8
+    }
+  },
+  "top_features": [
+    [
+      "current_amount",
+      0.5472
+    ],
+    [
+      "is_first_time_receiver",
+      0.1044
+    ],
+    [
+      "z_score",
+      0.0895
+    ],
+    [
+      "avg_amount",
+      0.0462
+    ],
+    [
+      "velocity_1h_count",
+      0.0432
+    ]
+  ],
+  "synthetic_data_caveat": "Trained exclusively on synthetic behavioral sequences."
+}

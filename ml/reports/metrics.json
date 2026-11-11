@@ -1,0 +1,51 @@
+{
+  "dataset": {
+    "synthetic": true,
+    "seed": 42,
+    "num_accounts": 120,
+    "total_transactions": 1006,
+    "train_size": 704,
+    "val_size": 151,
+    "test_size": 151,
+    "fraud_prevalence_test": 0.053
+  },
+  "validation_metrics": {
+    "f1_score": 0.9048,
+    "roc_auc": 0.9886
+  },
+  "test_metrics": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "roc_auc": 1.0,
+    "pr_auc": 1.0,
+    "confusion_matrix": {
+      "tn": 143,
+      "fp": 0,
+      "fn": 0,
+      "tp": 8
+    }
+  },
+  "top_features": [
+    [
+      "current_amount",
+      0.5472
+    ],
+    [
+      "is_first_time_receiver",
+      0.1044
+    ],
+    [
+      "z_score",
+      0.0895
+    ],
+    [
+      "avg_amount",
+      0.0462
+    ],
+    [
+      "velocity_1h_count",
+      0.0432
+    ]
+  ]
+}
