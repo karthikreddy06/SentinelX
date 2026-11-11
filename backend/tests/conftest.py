@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.rate_limiter import rate_limiter
 from app.core.security import create_access_token, hash_password
 from app.database.connection import get_db
+from app.fraud.cache import clear_all_fraud_cache
 from app.main import app
 from app.models.user import User, UserRole
 
@@ -54,8 +55,10 @@ def apply_migrations():
 def clean_database():
     """Truncate tables and reset in-memory limiters between test runs to ensure isolation."""
     rate_limiter.reset()
+    clear_all_fraud_cache()
     yield
     rate_limiter.reset()
+    clear_all_fraud_cache()
     with test_engine.connect() as conn:
         conn.execute(
             text(
