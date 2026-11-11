@@ -10,8 +10,8 @@ SentinelX is a real-time financial fraud detection & intelligence platform. This
 |---|---|---|---|---|
 | **M1** | Core Foundation & Health Checks | `main` | **done** | Base FastAPI app, DB connection pool, `/`, `/health`, `/health/database` |
 | **M2** | Transaction Management Engine | `phase-2-transaction-engine` | **done** | 33 passed tests, PostgreSQL 18 uuidv7, idempotency engine, PR #1 merged |
-| **M3** | Auth & Security | `phase-3-auth-security` | **done** | 43 passed tests, Argon2 hashing, JWT access & refresh tokens rotation/revocation, RBAC dependencies, in-memory rate limiting & lockout, audit logging table & endpoints, CLI admin provisioning |
-| **M4** | Fraud Risk Scoring Engine | `phase-4-risk-engine` | **todo** | Pending |
+| **M3** | Auth & Security | `phase-3-auth-security` | **done** | 43 passed tests, Argon2 hashing, JWT access & refresh tokens rotation/revocation, RBAC dependencies, in-memory rate limiting & lockout, audit logging table & endpoints, CLI admin provisioning, PR #2 merged |
+| **M4** | Fraud Risk Scoring Engine | `phase-4-risk-engine` | **done** | 53 passed tests, 10 transparent rules (velocity, amount anomaly, first-time receiver, unusual hour, impossible travel, new device/ip, structuring, round number, pass-through, burst failures), point-in-time feature extraction, persistent `fraud_scores` table, synchronous creation scoring, POST `/transactions/{id}/score` and GET `/transactions/{id}/risk` |
 | **M5** | Machine Learning | `phase-5-ml` | **todo** | Pending |
 | **M6** | Fraud Alert Management | `phase-6-alerts` | **todo** | Pending |
 | **M7** | Investigation Management | `phase-7-investigations` | **todo** | Pending |

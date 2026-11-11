@@ -5,8 +5,12 @@ import uuid
 import pytest
 
 
+from app.core.config import settings
+
+
 @pytest.fixture(autouse=True)
-def authenticate_client(client, investigator_headers):
+def authenticate_client(client, investigator_headers, monkeypatch):
+    monkeypatch.setattr(settings, "FRAUD_SCORING_ENABLED", False)
     client.headers.update(investigator_headers)
 
 

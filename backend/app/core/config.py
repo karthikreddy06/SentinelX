@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 300  # 5 minutes
     RATE_LIMIT_LOGIN_LOCKOUT_SECONDS: int = 900  # 15 minutes lockout
 
+    # Fraud Engine
+    FRAUD_SCORING_ENABLED: bool = True
+
     # Initial Admin (CLI use)
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None
