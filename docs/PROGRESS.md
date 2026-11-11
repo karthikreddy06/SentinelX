@@ -15,7 +15,7 @@ SentinelX is a real-time financial fraud detection & intelligence platform. This
 | **M5** | Machine Learning | `phase-5-ml` | **done** | 59 passed tests, deterministic synthetic data generator, point-in-time training pipeline (RandomForest + IsolationForest, 17 features, 70/15/15 temporal split), Model Card, model loader & predictor with graceful rules-only fallback, hybrid 60/40 scoring, GET `/api/v1/ml/model` and POST `/api/v1/ml/retrain` endpoints |
 | **M6** | Fraud Alert Management | `phase-6-alerts` | **done** | 63 passed tests, alerts & alert_events tables with uuidv7, auto-generation on score >= 70 or HIGH risk, alert deduplication, strict state machine transitions with RBAC and resolution notes enforcement, timeline history, stats summary endpoint |
 | **M7** | Investigation Management | `phase-7-investigations` | **done** | 65 passed tests, investigations, investigation_alerts, investigation_notes, and investigation_evidence tables with uuidv7, case lifecycle with notes and evidence, automatic alert status syncing (open -> investigating -> resolved_*), aggregated chronological timeline, close & reopen workflows, RBAC |
-| **M8** | Redis Caching | `phase-8-redis` | **todo** | Pending |
+| **M8** | Redis Caching | `phase-8-redis` | **done** | 70 passed tests, Redis 7 docker-compose, graceful degradation wrapper, `/health/redis` endpoint, distributed rate limiting with sliding window, transaction velocity caching (sorted sets), sender profile cache with write invalidation, verified seamless DB fallback when Redis offline, real scoring speedup of 3.85x (74.1% latency reduction documented in `docs/BENCHMARK.md`) |
 
 ---
 

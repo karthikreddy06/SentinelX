@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     FRAUD_SCORING_ENABLED: bool = True
     ALERT_AUTO_CREATE_THRESHOLD: int = 70
 
+    # Redis & Caching
+    REDIS_URL: str = "redis://127.0.0.1:6379/0"
+    REDIS_ENABLED: bool = True
+
     # Initial Admin (CLI use)
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None

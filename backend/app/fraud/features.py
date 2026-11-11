@@ -6,6 +6,12 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.fraud.cache import (
+    get_sender_profile,
+    get_transaction_velocity,
+    record_transaction_velocity,
+    set_sender_profile,
+)
 from app.models.transaction import Transaction, TransactionStatus
 
 
@@ -15,50 +21,103 @@ def extract_point_in_time_features(
     """
     Extract per-transaction behavioral features using only point-in-time historical data.
     Strictly filters occurred_at < transaction.occurred_at (no data leakage).
+    Uses Redis caching for hot-path sender profiles and velocity windows with graceful DB fallback.
     """
     tx_time = transaction.occurred_at
     sender_id = transaction.sender_account_id
     current_amount = float(transaction.amount)
+    tx_ts = tx_time.timestamp()
 
-    # 1. Historical sender transactions
-    history_query = (
-        select(Transaction)
-        .where(
-            Transaction.sender_account_id == sender_id,
-            Transaction.occurred_at < tx_time,
-        )
-        .order_by(Transaction.occurred_at.desc())
-    )
-    sender_history = list(db.execute(history_query).scalars().all())
+    # 1. Historical sender transactions / Profile Cache
+    cached_profile = get_sender_profile(sender_id)
+    sender_history: list[Transaction] = []
 
-    total_history_count = len(sender_history)
-    hist_amounts = [float(t.amount) for t in sender_history]
+    # Check if cached profile is applicable (must be strictly point-in-time prior to this transaction)
+    use_cached_profile = False
+    if cached_profile is not None:
+        last_iso = cached_profile.get("last_tx_occurred_at")
+        if last_iso:
+            last_dt = datetime.fromisoformat(last_iso)
+            if last_dt < tx_time:
+                use_cached_profile = True
+        elif cached_profile.get("total_history_count") == 0:
+            use_cached_profile = True
 
-    # Stats calculation
-    if total_history_count > 0:
-        avg_amount = sum(hist_amounts) / total_history_count
-        variance = sum((x - avg_amount) ** 2 for x in hist_amounts) / total_history_count
-        std_amount = math.sqrt(variance) if variance > 0 else 0.0
-
-        sorted_amounts = sorted(hist_amounts)
-        mid = total_history_count // 2
-        median_amount = (
-            (sorted_amounts[mid - 1] + sorted_amounts[mid]) / 2.0
-            if total_history_count % 2 == 0
-            else sorted_amounts[mid]
-        )
-        deviations = [abs(x - median_amount) for x in hist_amounts]
-        sorted_devs = sorted(deviations)
-        mad_amount = (
-            (sorted_devs[mid - 1] + sorted_devs[mid]) / 2.0
-            if total_history_count % 2 == 0
-            else sorted_devs[mid]
-        )
+    if use_cached_profile and cached_profile:
+        total_history_count = cached_profile["total_history_count"]
+        avg_amount = cached_profile["avg_amount"]
+        std_amount = cached_profile["std_amount"]
+        median_amount = cached_profile["median_amount"]
+        mad_amount = cached_profile["mad_amount"]
+        prev_receivers = set(cached_profile.get("prev_receivers", []))
+        prev_devices = set(cached_profile.get("prev_devices", []))
+        prev_ips = set(cached_profile.get("prev_ips", []))
+        last_country = cached_profile.get("last_tx_country")
+        last_time_iso = cached_profile.get("last_tx_occurred_at")
+        last_tx_time = datetime.fromisoformat(last_time_iso) if last_time_iso else None
     else:
-        avg_amount = current_amount
-        std_amount = 0.0
-        median_amount = current_amount
-        mad_amount = 0.0
+        # DB Query for point-in-time sender history
+        history_query = (
+            select(Transaction)
+            .where(
+                Transaction.sender_account_id == sender_id,
+                Transaction.occurred_at < tx_time,
+            )
+            .order_by(Transaction.occurred_at.desc())
+        )
+        sender_history = list(db.execute(history_query).scalars().all())
+
+        total_history_count = len(sender_history)
+        hist_amounts = [float(t.amount) for t in sender_history]
+
+        if total_history_count > 0:
+            avg_amount = sum(hist_amounts) / total_history_count
+            variance = sum((x - avg_amount) ** 2 for x in hist_amounts) / total_history_count
+            std_amount = math.sqrt(variance) if variance > 0 else 0.0
+
+            sorted_amounts = sorted(hist_amounts)
+            mid = total_history_count // 2
+            median_amount = (
+                (sorted_amounts[mid - 1] + sorted_amounts[mid]) / 2.0
+                if total_history_count % 2 == 0
+                else sorted_amounts[mid]
+            )
+            deviations = [abs(x - median_amount) for x in hist_amounts]
+            sorted_devs = sorted(deviations)
+            mad_amount = (
+                (sorted_devs[mid - 1] + sorted_devs[mid]) / 2.0
+                if total_history_count % 2 == 0
+                else sorted_devs[mid]
+            )
+        else:
+            avg_amount = current_amount
+            std_amount = 0.0
+            median_amount = current_amount
+            mad_amount = 0.0
+
+        prev_receivers = {t.receiver_account_id for t in sender_history}
+        prev_devices = {t.device_id for t in sender_history if t.device_id}
+        prev_ips = {t.ip_address for t in sender_history if t.ip_address}
+        last_tx = sender_history[0] if sender_history else None
+        last_country = last_tx.country_code if last_tx else None
+        last_tx_time = last_tx.occurred_at if last_tx else None
+
+        # Populate Redis cache with computed profile
+        set_sender_profile(
+            sender_id,
+            {
+                "total_history_count": total_history_count,
+                "avg_amount": avg_amount,
+                "std_amount": std_amount,
+                "median_amount": median_amount,
+                "mad_amount": mad_amount,
+                "prev_receivers": list(prev_receivers),
+                "prev_devices": list(prev_devices),
+                "prev_ips": list(prev_ips),
+                "last_tx_country": last_country,
+                "last_tx_occurred_at": last_tx_time.isoformat() if last_tx_time else None,
+            },
+        )
 
     z_score = (current_amount - avg_amount) / std_amount if std_amount > 0 else 0.0
 
@@ -67,18 +126,41 @@ def extract_point_in_time_features(
     time_1h = tx_time - timedelta(hours=1)
     time_24h = tx_time - timedelta(hours=24)
 
-    vel_1m = sum(1 for t in sender_history if t.occurred_at >= time_1m)
-    vel_1h = sum(1 for t in sender_history if t.occurred_at >= time_1h)
-    vel_24h = sum(1 for t in sender_history if t.occurred_at >= time_24h)
-    amount_24h = sum(float(t.amount) for t in sender_history if t.occurred_at >= time_24h)
+    cached_vel = get_transaction_velocity(sender_id, tx_ts)
+    if cached_vel is not None:
+        vel_1m = cached_vel["vel_1m"]
+        vel_1h = cached_vel["vel_1h"]
+        vel_24h = cached_vel["vel_24h"]
+        amount_24h = cached_vel["amount_24h"]
+    else:
+        if not sender_history:
+            history_query = (
+                select(Transaction)
+                .where(
+                    Transaction.sender_account_id == sender_id,
+                    Transaction.occurred_at < tx_time,
+                )
+                .order_by(Transaction.occurred_at.desc())
+            )
+            sender_history = list(db.execute(history_query).scalars().all())
+
+        vel_1m = sum(1 for t in sender_history if t.occurred_at >= time_1m)
+        vel_1h = sum(1 for t in sender_history if t.occurred_at >= time_1h)
+        vel_24h = sum(1 for t in sender_history if t.occurred_at >= time_24h)
+        amount_24h = sum(float(t.amount) for t in sender_history if t.occurred_at >= time_24h)
+
+        # Seed Redis velocity cache with historical transactions
+        for t in sender_history:
+            if t.occurred_at >= time_24h:
+                record_transaction_velocity(sender_id, float(t.amount), t.occurred_at.timestamp())
+
+    # Record current transaction in velocity cache
+    record_transaction_velocity(sender_id, current_amount, tx_ts)
 
     # 3. New Receiver Check
-    prev_receivers = {t.receiver_account_id for t in sender_history}
     is_first_time_receiver = transaction.receiver_account_id not in prev_receivers
 
     # 4. Device and IP history
-    prev_devices = {t.device_id for t in sender_history if t.device_id}
-    prev_ips = {t.ip_address for t in sender_history if t.ip_address}
     is_new_device = (
         transaction.device_id is not None
         and total_history_count >= 2
@@ -91,14 +173,13 @@ def extract_point_in_time_features(
     )
 
     # 5. Travel & Location Anomaly
-    last_tx = sender_history[0] if sender_history else None
     seconds_since_last_tx: float | None = None
     country_changed = False
     impossible_travel = False
 
-    if last_tx and last_tx.country_code and transaction.country_code:
-        seconds_since_last_tx = (tx_time - last_tx.occurred_at).total_seconds()
-        if last_tx.country_code != transaction.country_code:
+    if last_country and transaction.country_code and last_tx_time:
+        seconds_since_last_tx = (tx_time - last_tx_time).total_seconds()
+        if last_country != transaction.country_code:
             country_changed = True
             # Country change within 2 hours is considered impossible travel
             if seconds_since_last_tx < 7200:
@@ -108,6 +189,16 @@ def extract_point_in_time_features(
     current_hour = tx_time.hour
     is_night_hour = current_hour in [1, 2, 3, 4]
     if is_night_hour and total_history_count >= 5:
+        if not sender_history:
+            history_query = (
+                select(Transaction)
+                .where(
+                    Transaction.sender_account_id == sender_id,
+                    Transaction.occurred_at < tx_time,
+                )
+                .order_by(Transaction.occurred_at.desc())
+            )
+            sender_history = list(db.execute(history_query).scalars().all())
         night_txs = sum(1 for t in sender_history if t.occurred_at.hour in [1, 2, 3, 4])
         is_unusual_hour = (night_txs / total_history_count) < 0.05
     else:
@@ -116,6 +207,17 @@ def extract_point_in_time_features(
     # 7. Structuring Detection
     def is_in_band(amt: float) -> bool:
         return (9000.0 <= amt <= 9999.99) or (900.0 <= amt <= 999.99)
+
+    if not sender_history:
+        history_query = (
+            select(Transaction)
+            .where(
+                Transaction.sender_account_id == sender_id,
+                Transaction.occurred_at < tx_time,
+            )
+            .order_by(Transaction.occurred_at.desc())
+        )
+        sender_history = list(db.execute(history_query).scalars().all())
 
     structuring_24h = sum(
         1 for t in sender_history if t.occurred_at >= time_24h and is_in_band(float(t.amount))
