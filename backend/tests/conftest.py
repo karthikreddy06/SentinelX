@@ -59,7 +59,7 @@ def clean_database():
     with test_engine.connect() as conn:
         conn.execute(
             text(
-                "TRUNCATE TABLE alert_events, alerts, fraud_scores, audit_logs, refresh_tokens, users, transactions RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE investigation_notes, investigation_evidence, investigation_alerts, investigations, alert_events, alerts, fraud_scores, audit_logs, refresh_tokens, users, transactions RESTART IDENTITY CASCADE"
             )
         )
         conn.commit()

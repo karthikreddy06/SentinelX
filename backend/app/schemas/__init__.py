@@ -13,6 +13,19 @@ from app.schemas.fraud import (
     RiskHistoryResponse,
     RuleReasonResponse,
 )
+from app.schemas.investigation import (
+    InvestigationCloseRequest,
+    InvestigationCreate,
+    InvestigationEvidenceCreate,
+    InvestigationEvidenceResponse,
+    InvestigationLinkAlertsRequest,
+    InvestigationListResponse,
+    InvestigationNoteCreate,
+    InvestigationNoteResponse,
+    InvestigationResponse,
+    InvestigationTimelineItem,
+    InvestigationUpdate,
+)
 from app.schemas.transaction import (
     TransactionCreate,
     TransactionListResponse,
@@ -49,4 +62,15 @@ __all__ = [
     "AlertUpdate",
     "AlertAssignRequest",
     "AlertStatsResponse",
+    "InvestigationCreate",
+    "InvestigationUpdate",
+    "InvestigationNoteCreate",
+    "InvestigationNoteResponse",
+    "InvestigationEvidenceCreate",
+    "InvestigationEvidenceResponse",
+    "InvestigationLinkAlertsRequest",
+    "InvestigationCloseRequest",
+    "InvestigationTimelineItem",
+    "InvestigationResponse",
+    "InvestigationListResponse",
 ]
