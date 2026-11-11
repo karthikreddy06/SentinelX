@@ -16,7 +16,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.connection import Base
 
@@ -115,6 +115,12 @@ class Transaction(Base):
         nullable=False,
         server_default=text("now()"),
         onupdate=func.now(),
+    )
+
+    fraud_scores: Mapped[list["FraudScore"]] = relationship(  # type: ignore # noqa: F821
+        "FraudScore",
+        back_populates="transaction",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (
