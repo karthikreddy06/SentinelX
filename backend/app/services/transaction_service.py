@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.fraud.cache import invalidate_sender_profile
 from app.models.transaction import (
     RiskLevel,
     Transaction,
@@ -111,6 +112,7 @@ def create_transaction(
     try:
         db.commit()
         db.refresh(transaction)
+        invalidate_sender_profile(transaction.sender_account_id)
         return transaction, True
     except IntegrityError:
         db.rollback()

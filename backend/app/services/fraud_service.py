@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.fraud.cache import invalidate_sender_profile
 from app.fraud.features import extract_point_in_time_features
 from app.fraud.scorer import default_rules_engine
 from app.models.fraud_score import FraudScore
@@ -49,6 +50,7 @@ def score_transaction(
 
     db.commit()
     db.refresh(fraud_score)
+    invalidate_sender_profile(transaction.sender_account_id)
 
     # 5. Auto-generate alert if threshold reached
     create_alert_if_eligible(
