@@ -8,6 +8,10 @@ from app.services.auth_service import (
     logout_user,
     refresh_user_tokens,
 )
+from app.services.fraud_service import (
+    get_transaction_risk_history,
+    score_transaction,
+)
 from app.services.transaction_service import (
     IdempotencyConflict,
     InvalidStatusTransition,
@@ -55,4 +59,6 @@ __all__ = [
     "update_user",
     "UserNotFound",
     "UserAlreadyExists",
+    "score_transaction",
+    "get_transaction_risk_history",
 ]

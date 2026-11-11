@@ -1,5 +1,10 @@
 from app.schemas.audit_log import AuditLogListResponse, AuditLogResponse
 from app.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse
+from app.schemas.fraud import (
+    FraudScoreResponse,
+    RiskHistoryResponse,
+    RuleReasonResponse,
+)
 from app.schemas.transaction import (
     TransactionCreate,
     TransactionListResponse,
@@ -27,4 +32,7 @@ __all__ = [
     "RefreshTokenRequest",
     "AuditLogResponse",
     "AuditLogListResponse",
+    "RuleReasonResponse",
+    "FraudScoreResponse",
+    "RiskHistoryResponse",
 ]
