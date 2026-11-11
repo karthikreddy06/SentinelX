@@ -13,6 +13,7 @@ from app.core.middleware import (
     RequestIDMiddleware,
     SecurityHeadersMiddleware,
 )
+from app.core import redis as redis_core
 from app.database.connection import engine
 
 # Configure Structured JSON Logging
@@ -87,3 +88,20 @@ def database_health():
         "database": "connected",
         "status": "healthy",
     }
+
+
+@app.get("/health/redis")
+def redis_health():
+    status_str, details = redis_core.check_redis_health()
+    status_code = (
+        status.HTTP_200_OK
+        if status_str in ("ok", "disabled")
+        else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "redis": status_str,
+            "details": details,
+        },
+    )
