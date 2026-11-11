@@ -6,6 +6,16 @@ from app.models.alert import (
 )
 from app.models.audit_log import AuditLog
 from app.models.fraud_score import FraudScore
+from app.models.investigation import (
+    EvidenceType,
+    Investigation,
+    InvestigationEvidence,
+    InvestigationNote,
+    InvestigationOutcome,
+    InvestigationPriority,
+    InvestigationStatus,
+    investigation_alerts,
+)
 from app.models.transaction import (
     RiskLevel,
     Transaction,
@@ -32,4 +42,12 @@ __all__ = [
     "AlertEvent",
     "AlertSeverity",
     "AlertStatus",
+    "Investigation",
+    "InvestigationStatus",
+    "InvestigationPriority",
+    "InvestigationOutcome",
+    "EvidenceType",
+    "InvestigationNote",
+    "InvestigationEvidence",
+    "investigation_alerts",
 ]
