@@ -5,6 +5,11 @@ import uuid
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def authenticate_client(client, investigator_headers):
+    client.headers.update(investigator_headers)
+
+
 def make_valid_payload(**overrides):
     now = datetime.now(timezone.utc)
     base = {
