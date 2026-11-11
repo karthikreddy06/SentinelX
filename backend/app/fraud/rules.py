@@ -61,9 +61,9 @@ class VelocityBurstRule(BaseRule):
         thresholds = config["thresholds"]
         weight = config["weights"]["velocity_burst"]
 
-        v1m = features["velocity_1m_count"]
-        v1h = features["velocity_1h_count"]
-        v24h = features["velocity_24h_count"]
+        v1m = features.get("velocity_1m_count", 0)
+        v1h = features.get("velocity_1h_count", 0)
+        v24h = features.get("velocity_24h_count", 0)
 
         triggered = (
             v1m >= thresholds["velocity_1m_max"]
@@ -93,8 +93,8 @@ class AmountAnomalyRule(BaseRule):
         thresholds = config["thresholds"]
         weight = config["weights"]["amount_anomaly"]
 
-        amt = features["current_amount"]
-        z_score = features["z_score"]
+        amt = features.get("current_amount", float(transaction.amount) if transaction else 0.0)
+        z_score = features.get("z_score", 0.0)
         hard_limit = thresholds["hard_high_amount"]
 
         triggered = amt >= hard_limit or z_score >= 3.0
@@ -110,7 +110,7 @@ class AmountAnomalyRule(BaseRule):
                 "amount": amt,
                 "z_score": z_score,
                 "hard_limit": hard_limit,
-                "historical_avg": features["avg_amount"],
+                "historical_avg": features.get("avg_amount", 0.0),
             },
         )
 
@@ -126,9 +126,9 @@ class NewReceiverHighAmountRule(BaseRule):
         thresholds = config["thresholds"]
         weight = config["weights"]["new_receiver_high_amount"]
 
-        is_first_time = features["is_first_time_receiver"]
-        amt = features["current_amount"]
-        avg_amt = features["avg_amount"]
+        is_first_time = features.get("is_first_time_receiver", False)
+        amt = features.get("current_amount", float(transaction.amount) if transaction else 0.0)
+        avg_amt = features.get("avg_amount", 0.0)
         min_high = thresholds["new_receiver_high_amount"]
 
         triggered = is_first_time and (amt >= min_high or (avg_amt > 0 and amt >= 2.5 * avg_amt))
@@ -157,7 +157,7 @@ class UnusualHourRule(BaseRule):
         self, transaction: Transaction, features: dict[str, Any], config: dict[str, Any]
     ) -> RuleResult:
         weight = config["weights"]["unusual_hour"]
-        triggered = features["is_unusual_hour"]
+        triggered = features.get("is_unusual_hour", False)
 
         return RuleResult(
             rule_name=self.name,
@@ -166,7 +166,7 @@ class UnusualHourRule(BaseRule):
             weight=weight,
             score_contribution=weight if triggered else 0,
             description=self.description,
-            evidence={"hour_of_day": features["hour_of_day"]},
+            evidence={"hour_of_day": features.get("hour_of_day", 0)},
         )
 
 
@@ -179,7 +179,7 @@ class ImpossibleTravelRule(BaseRule):
         self, transaction: Transaction, features: dict[str, Any], config: dict[str, Any]
     ) -> RuleResult:
         weight = config["weights"]["impossible_travel"]
-        triggered = features["impossible_travel"]
+        triggered = features.get("impossible_travel", False)
 
         return RuleResult(
             rule_name=self.name,
@@ -189,8 +189,8 @@ class ImpossibleTravelRule(BaseRule):
             score_contribution=weight if triggered else 0,
             description=self.description,
             evidence={
-                "country_changed": features["country_changed"],
-                "seconds_since_last_tx": features["seconds_since_last_tx"],
+                "country_changed": features.get("country_changed", False),
+                "seconds_since_last_tx": features.get("seconds_since_last_tx"),
             },
         )
 
@@ -204,7 +204,7 @@ class NewDeviceOrIPRule(BaseRule):
         self, transaction: Transaction, features: dict[str, Any], config: dict[str, Any]
     ) -> RuleResult:
         weight = config["weights"]["new_device_or_ip"]
-        triggered = features["is_new_device"] and features["is_new_ip"]
+        triggered = features.get("is_new_device", False) and features.get("is_new_ip", False)
 
         return RuleResult(
             rule_name=self.name,
@@ -214,8 +214,8 @@ class NewDeviceOrIPRule(BaseRule):
             score_contribution=weight if triggered else 0,
             description=self.description,
             evidence={
-                "is_new_device": features["is_new_device"],
-                "is_new_ip": features["is_new_ip"],
+                "is_new_device": features.get("is_new_device", False),
+                "is_new_ip": features.get("is_new_ip", False),
             },
         )
 
@@ -229,7 +229,7 @@ class StructuringRule(BaseRule):
         self, transaction: Transaction, features: dict[str, Any], config: dict[str, Any]
     ) -> RuleResult:
         weight = config["weights"]["structuring"]
-        count = features["total_structuring_count"]
+        count = features.get("total_structuring_count", 0)
         triggered = count >= 2
 
         return RuleResult(
@@ -252,7 +252,9 @@ class RoundNumberRule(BaseRule):
         self, transaction: Transaction, features: dict[str, Any], config: dict[str, Any]
     ) -> RuleResult:
         weight = config["weights"]["round_number"]
-        triggered = features["is_round_number"] and features["current_amount"] >= 1000.0
+        amt = features.get("current_amount", float(transaction.amount) if transaction else 0.0)
+        is_round = features.get("is_round_number", False)
+        triggered = is_round and amt >= 1000.0
 
         return RuleResult(
             rule_name=self.name,
@@ -262,8 +264,8 @@ class RoundNumberRule(BaseRule):
             score_contribution=weight if triggered else 0,
             description=self.description,
             evidence={
-                "amount": features["current_amount"],
-                "is_round": features["is_round_number"],
+                "amount": amt,
+                "is_round": is_round,
             },
         )
 
@@ -277,7 +279,7 @@ class PassThroughRule(BaseRule):
         self, transaction: Transaction, features: dict[str, Any], config: dict[str, Any]
     ) -> RuleResult:
         weight = config["weights"]["pass_through"]
-        triggered = features["pass_through_detected"]
+        triggered = features.get("pass_through_detected", False)
 
         return RuleResult(
             rule_name=self.name,
@@ -300,7 +302,7 @@ class BurstFailuresRule(BaseRule):
     ) -> RuleResult:
         thresholds = config["thresholds"]
         weight = config["weights"]["burst_failures"]
-        recent = features["recent_failures_1h"]
+        recent = features.get("recent_failures_1h", 0)
         triggered = recent >= thresholds["burst_failures_max"]
 
         return RuleResult(

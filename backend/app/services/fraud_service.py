@@ -29,14 +29,14 @@ def score_transaction(
     features = extract_point_in_time_features(db, transaction)
 
     # 2. Rule evaluation
-    score, level, reasons = default_rules_engine.evaluate(transaction, features)
+    score, level, reasons, engine_version = default_rules_engine.evaluate(transaction, features)
 
     # 3. Create persistent fraud score record
     fraud_score = FraudScore(
         transaction_id=transaction.id,
         score=score,
         level=level,
-        engine_version=default_rules_engine.config["engine_version"],
+        engine_version=engine_version,
         reasons_json=reasons,
         features_json=features,
     )
