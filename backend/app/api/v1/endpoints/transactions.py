@@ -15,12 +15,14 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_client_ip, require_roles
+from app.core.config import settings
 from app.database.connection import get_db
 from app.models.transaction import (
     RiskLevel,
     TransactionStatus,
 )
 from app.models.user import User, UserRole
+from app.schemas.fraud import FraudScoreResponse, RiskHistoryResponse
 from app.schemas.transaction import (
     TransactionCreate,
     TransactionListResponse,
@@ -28,6 +30,10 @@ from app.schemas.transaction import (
     TransactionUpdate,
 )
 from app.services.audit_service import record_audit_entry
+from app.services.fraud_service import (
+    get_transaction_risk_history,
+    score_transaction,
+)
 from app.services.transaction_service import (
     IdempotencyConflict,
     InvalidStatusTransition,
@@ -86,6 +92,15 @@ def create_transaction_endpoint(
         )
         if not is_created:
             response.status_code = status.HTTP_200_OK
+        elif settings.FRAUD_SCORING_ENABLED:
+            score_transaction(
+                db=db,
+                transaction_id=transaction.id,
+                user=current_user,
+                ip_address=ip,
+                user_agent=user_agent,
+            )
+            db.refresh(transaction)
 
         record_audit_entry(
             db=db,
@@ -294,3 +309,65 @@ def cancel_transaction_endpoint(
             metadata={"error": "cannot_cancel_non_pending"},
         )
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+
+
+@router.post(
+    "/{id}/score",
+    response_model=FraudScoreResponse,
+    summary="Re-score transaction",
+    description="Trigger on-demand fraud scoring using the rules engine. Restricted to Admin and Investigator.",
+    responses={
+        200: {"description": "Transaction successfully evaluated and scored."},
+        401: {"description": "Unauthorized."},
+        403: {"description": "Forbidden."},
+        404: {"description": "Transaction not found."},
+    },
+)
+def score_transaction_endpoint(
+    id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(CAN_WRITE_TRANSACTIONS),
+    db: Session = Depends(get_db),
+) -> FraudScoreResponse:
+    ip = get_client_ip(request)
+    user_agent = request.headers.get("User-Agent")
+    try:
+        fraud_score = score_transaction(
+            db=db,
+            transaction_id=id,
+            user=current_user,
+            ip_address=ip,
+            user_agent=user_agent,
+        )
+        return FraudScoreResponse.model_validate(fraud_score)
+    except TransactionNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+@router.get(
+    "/{id}/risk",
+    response_model=RiskHistoryResponse,
+    summary="Get transaction risk history",
+    description="Retrieve full score and reason history for a transaction. Accessible to Admin, Investigator, Analyst.",
+    responses={
+        200: {"description": "Risk history successfully retrieved."},
+        401: {"description": "Unauthorized."},
+        404: {"description": "Transaction not found."},
+    },
+)
+def get_transaction_risk_endpoint(
+    id: uuid.UUID,
+    current_user: User = Depends(CAN_READ_TRANSACTIONS),
+    db: Session = Depends(get_db),
+) -> RiskHistoryResponse:
+    try:
+        tx = get_transaction(db=db, transaction_id=id)
+        scores = get_transaction_risk_history(db=db, transaction_id=id)
+        return RiskHistoryResponse(
+            transaction_id=tx.id,
+            current_score=tx.risk_score,
+            current_level=tx.risk_level,
+            scores=[FraudScoreResponse.model_validate(s) for s in scores],
+        )
+    except TransactionNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
