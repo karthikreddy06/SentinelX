@@ -1,21 +1,24 @@
 from fastapi import FastAPI
 from sqlalchemy import text
 
+from app.api.v1 import api_router
 from app.core.config import settings
 from app.database.connection import engine
 
 app = FastAPI(
     title=settings.APP_NAME,
     description="Real-Time Fraud Detection & Intelligence Platform",
-    version="1.0.0"
+    version="1.0.0",
 )
+
+app.include_router(api_router, prefix="/api/v1")
 
 
 @app.get("/")
 def root():
     return {
         "message": "Welcome to SentinelX",
-        "status": "running"
+        "status": "running",
     }
 
 
@@ -23,7 +26,7 @@ def root():
 def health():
     return {
         "status": "healthy",
-        "application": settings.APP_NAME
+        "application": settings.APP_NAME,
     }
 
 
@@ -34,5 +37,5 @@ def database_health():
 
     return {
         "database": "connected",
-        "status": "healthy"
+        "status": "healthy",
     }
