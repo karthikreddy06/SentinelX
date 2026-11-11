@@ -54,7 +54,7 @@ def test_rule_velocity_burst(db_session):
 
     target_tx = create_raw_tx(db_session, sender=sender, occurred_at=now)
     features = extract_point_in_time_features(db_session, target_tx)
-    score, level, reasons = default_rules_engine.evaluate(target_tx, features)
+    score, level, reasons, _ = default_rules_engine.evaluate(target_tx, features)
 
     reason_codes = [r["reason_code"] for r in reasons]
     assert "VEL_BURST" in reason_codes
@@ -68,7 +68,7 @@ def test_rule_amount_anomaly(db_session):
     # 1. Hard ceiling trigger ($15,000)
     tx_hard = create_raw_tx(db_session, sender=sender, amount="15000.00", occurred_at=now)
     feat_hard = extract_point_in_time_features(db_session, tx_hard)
-    _, _, reasons_hard = default_rules_engine.evaluate(tx_hard, feat_hard)
+    _, _, reasons_hard, _ = default_rules_engine.evaluate(tx_hard, feat_hard)
     assert "AMT_ANOMALY" in [r["reason_code"] for r in reasons_hard]
 
     # 2. Normal amount does NOT trigger anomaly
@@ -76,7 +76,7 @@ def test_rule_amount_anomaly(db_session):
     create_raw_tx(db_session, sender="normal_user", amount="110.00", occurred_at=now - timedelta(hours=1))
     tx_normal = create_raw_tx(db_session, sender="normal_user", amount="105.00", occurred_at=now)
     feat_norm = extract_point_in_time_features(db_session, tx_normal)
-    _, _, reasons_norm = default_rules_engine.evaluate(tx_normal, feat_norm)
+    _, _, reasons_norm, _ = default_rules_engine.evaluate(tx_normal, feat_norm)
     assert "AMT_ANOMALY" not in [r["reason_code"] for r in reasons_norm]
 
 
@@ -90,7 +90,7 @@ def test_rule_new_receiver_high_amount(db_session):
     # New recipient with high amount ($2,500)
     target_tx = create_raw_tx(db_session, sender=sender, receiver="stranger_acc", amount="2500.00", occurred_at=now)
     features = extract_point_in_time_features(db_session, target_tx)
-    _, _, reasons = default_rules_engine.evaluate(target_tx, features)
+    _, _, reasons, _ = default_rules_engine.evaluate(target_tx, features)
     assert "NEW_RECV_HIGH_AMT" in [r["reason_code"] for r in reasons]
 
 
@@ -104,7 +104,7 @@ def test_rule_impossible_travel(db_session):
     # Transaction in GB at 12:00 (30 minutes later) -> Impossible travel
     target_tx = create_raw_tx(db_session, sender=sender, country="GB", occurred_at=now)
     features = extract_point_in_time_features(db_session, target_tx)
-    _, _, reasons = default_rules_engine.evaluate(target_tx, features)
+    _, _, reasons, _ = default_rules_engine.evaluate(target_tx, features)
     assert "IMPOSSIBLE_TRAVEL" in [r["reason_code"] for r in reasons]
 
 
@@ -118,7 +118,7 @@ def test_rule_structuring(db_session):
     # 2nd transaction in band: $9,800 -> triggers structuring
     target_tx = create_raw_tx(db_session, sender=sender, amount="9800.00", occurred_at=now)
     features = extract_point_in_time_features(db_session, target_tx)
-    _, _, reasons = default_rules_engine.evaluate(target_tx, features)
+    _, _, reasons, _ = default_rules_engine.evaluate(target_tx, features)
     assert "STRUCTURING" in [r["reason_code"] for r in reasons]
 
 
@@ -128,13 +128,13 @@ def test_rule_round_number(db_session):
     # Round number $5,000 -> triggers
     tx_round = create_raw_tx(db_session, amount="5000.00", occurred_at=now)
     f_round = extract_point_in_time_features(db_session, tx_round)
-    _, _, r_round = default_rules_engine.evaluate(tx_round, f_round)
+    _, _, r_round, _ = default_rules_engine.evaluate(tx_round, f_round)
     assert "ROUND_NUMBER" in [r["reason_code"] for r in r_round]
 
     # Non-round number $1,234.56 -> negative
     tx_odd = create_raw_tx(db_session, amount="1234.56", occurred_at=now)
     f_odd = extract_point_in_time_features(db_session, tx_odd)
-    _, _, r_odd = default_rules_engine.evaluate(tx_odd, f_odd)
+    _, _, r_odd, _ = default_rules_engine.evaluate(tx_odd, f_odd)
     assert "ROUND_NUMBER" not in [r["reason_code"] for r in r_odd]
 
 
@@ -148,7 +148,7 @@ def test_rule_pass_through(db_session):
     # Outbound $2,900 from mule account -> pass-through
     target_tx = create_raw_tx(db_session, sender=mule_acc, receiver="boss", amount="2900.00", occurred_at=now)
     features = extract_point_in_time_features(db_session, target_tx)
-    _, _, reasons = default_rules_engine.evaluate(target_tx, features)
+    _, _, reasons, _ = default_rules_engine.evaluate(target_tx, features)
     assert "PASS_THROUGH" in [r["reason_code"] for r in reasons]
 
 
@@ -163,7 +163,7 @@ def test_rule_burst_failures(db_session):
     # Current transaction -> burst failures triggered
     target_tx = create_raw_tx(db_session, sender=sender, occurred_at=now)
     features = extract_point_in_time_features(db_session, target_tx)
-    _, _, reasons = default_rules_engine.evaluate(target_tx, features)
+    _, _, reasons, _ = default_rules_engine.evaluate(target_tx, features)
     assert "BURST_FAILURES" in [r["reason_code"] for r in reasons]
 
 
