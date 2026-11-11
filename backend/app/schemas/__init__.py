@@ -1,3 +1,11 @@
+from app.schemas.alert import (
+    AlertAssignRequest,
+    AlertEventResponse,
+    AlertListResponse,
+    AlertResponse,
+    AlertStatsResponse,
+    AlertUpdate,
+)
 from app.schemas.audit_log import AuditLogListResponse, AuditLogResponse
 from app.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse
 from app.schemas.fraud import (
@@ -35,4 +43,10 @@ __all__ = [
     "RuleReasonResponse",
     "FraudScoreResponse",
     "RiskHistoryResponse",
+    "AlertResponse",
+    "AlertListResponse",
+    "AlertEventResponse",
+    "AlertUpdate",
+    "AlertAssignRequest",
+    "AlertStatsResponse",
 ]

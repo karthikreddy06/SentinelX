@@ -1,3 +1,9 @@
+from app.models.alert import (
+    Alert,
+    AlertEvent,
+    AlertSeverity,
+    AlertStatus,
+)
 from app.models.audit_log import AuditLog
 from app.models.fraud_score import FraudScore
 from app.models.transaction import (
@@ -22,4 +28,8 @@ __all__ = [
     "RefreshToken",
     "AuditLog",
     "FraudScore",
+    "Alert",
+    "AlertEvent",
+    "AlertSeverity",
+    "AlertStatus",
 ]

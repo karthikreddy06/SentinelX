@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # Fraud Engine
     FRAUD_SCORING_ENABLED: bool = True
+    ALERT_AUTO_CREATE_THRESHOLD: int = 70
 
     # Initial Admin (CLI use)
     ADMIN_EMAIL: str | None = None
