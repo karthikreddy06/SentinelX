@@ -1,7 +1,8 @@
 import os
-import sys
 from pathlib import Path
+import sys
 from urllib.parse import urlparse, urlunparse
+import uuid
 
 # Ensure backend directory is in sys.path
 backend_dir = Path(__file__).resolve().parents[1]
@@ -16,8 +17,11 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
+from app.core.rate_limiter import rate_limiter
+from app.core.security import create_access_token, hash_password
 from app.database.connection import get_db
 from app.main import app
+from app.models.user import User, UserRole
 
 
 def get_test_db_url() -> str:
@@ -25,7 +29,6 @@ def get_test_db_url() -> str:
     return urlunparse(parsed._replace(path="/sentinelx_test"))
 
 
-# Programmatically derived test database engine
 test_db_url = get_test_db_url()
 os.environ["TEST_DATABASE_URL"] = test_db_url
 
@@ -49,10 +52,16 @@ def apply_migrations():
 
 @pytest.fixture(autouse=True)
 def clean_database():
-    """Truncate tables between test runs to ensure complete isolation."""
+    """Truncate tables and reset in-memory limiters between test runs to ensure isolation."""
+    rate_limiter.reset()
     yield
+    rate_limiter.reset()
     with test_engine.connect() as conn:
-        conn.execute(text("TRUNCATE TABLE transactions RESTART IDENTITY CASCADE"))
+        conn.execute(
+            text(
+                "TRUNCATE TABLE audit_logs, refresh_tokens, users, transactions RESTART IDENTITY CASCADE"
+            )
+        )
         conn.commit()
 
 
@@ -69,6 +78,7 @@ def db_session():
 @pytest.fixture
 def client(db_session):
     """FastAPI TestClient with overridden get_db dependency pointing to sentinelx_test."""
+
     def override_get_db():
         session = TestingSessionLocal()
         try:
@@ -80,3 +90,89 @@ def client(db_session):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def create_test_user(db_session):
+    """Factory fixture to create test users with specified roles."""
+
+    def _create(
+        email: str = "user@test.local",
+        password: str = "SecurePassword123!",
+        role: UserRole = UserRole.INVESTIGATOR,
+        full_name: str = "Test User",
+        is_active: bool = True,
+    ) -> User:
+        user = User(
+            email=email.lower(),
+            hashed_password=hash_password(password),
+            full_name=full_name,
+            role=role,
+            is_active=is_active,
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        return user
+
+    return _create
+
+
+@pytest.fixture
+def admin_user(create_test_user):
+    return create_test_user(
+        email="admin@test.local",
+        password="AdminPassword123!",
+        role=UserRole.ADMIN,
+        full_name="Admin User",
+    )
+
+
+@pytest.fixture
+def investigator_user(create_test_user):
+    return create_test_user(
+        email="investigator@test.local",
+        password="InvestigatorPass123!",
+        role=UserRole.INVESTIGATOR,
+        full_name="Investigator User",
+    )
+
+
+@pytest.fixture
+def analyst_user(create_test_user):
+    return create_test_user(
+        email="analyst@test.local",
+        password="AnalystPassword123!",
+        role=UserRole.ANALYST,
+        full_name="Analyst User",
+    )
+
+
+@pytest.fixture
+def admin_headers(admin_user):
+    token = create_access_token(
+        user_id=str(admin_user.id),
+        email=admin_user.email,
+        role=admin_user.role.value,
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def investigator_headers(investigator_user):
+    token = create_access_token(
+        user_id=str(investigator_user.id),
+        email=investigator_user.email,
+        role=investigator_user.role.value,
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def analyst_headers(analyst_user):
+    token = create_access_token(
+        user_id=str(analyst_user.id),
+        email=analyst_user.email,
+        role=analyst_user.role.value,
+    )
+    return {"Authorization": f"Bearer {token}"}
