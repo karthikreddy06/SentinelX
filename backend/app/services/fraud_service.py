@@ -8,6 +8,7 @@ from app.fraud.scorer import default_rules_engine
 from app.models.fraud_score import FraudScore
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.services.alert_service import create_alert_if_eligible
 from app.services.audit_service import record_audit_entry
 from app.services.transaction_service import get_transaction
 
@@ -49,7 +50,17 @@ def score_transaction(
     db.commit()
     db.refresh(fraud_score)
 
-    # 5. Audit entry
+    # 5. Auto-generate alert if threshold reached
+    create_alert_if_eligible(
+        db=db,
+        transaction_id=transaction.id,
+        risk_score=score,
+        risk_level=level,
+        reason_codes=[r["reason_code"] for r in reasons],
+        actor_id=user.id if user else None,
+    )
+
+    # 6. Audit entry
     record_audit_entry(
         db=db,
         action="fraud.score",
