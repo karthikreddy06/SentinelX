@@ -1,0 +1,22 @@
+# Git and documentation
+.git
+.gitignore
+docs/
+*.md
+
+# Virtual environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets and local configurations
+.env
+*.local
+.DS_Store
+Thumbs.db
+

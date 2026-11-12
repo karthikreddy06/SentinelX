@@ -1,6 +1,5 @@
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
-import json
 from pathlib import Path
 import random
 import sys
@@ -16,7 +15,7 @@ from app.core.security import hash_password
 from app.database.connection import SessionLocal
 from app.fraud.features import extract_point_in_time_features
 from app.fraud.scorer import RulesEngine
-from app.models.alert import Alert, AlertSeverity, AlertStatus
+from app.models.alert import Alert, AlertStatus
 from app.models.fraud_score import FraudScore
 from app.models.investigation import (
     EvidenceType,
@@ -26,8 +25,7 @@ from app.models.investigation import (
     InvestigationPriority,
     InvestigationStatus,
 )
-from app.models.network import AccountNetworkRisk, NetworkRiskFlag
-from app.models.transaction import RiskLevel, Transaction, TransactionStatus, TransactionType
+from app.models.transaction import Transaction, TransactionStatus, TransactionType
 from app.models.user import User, UserRole
 from app.services import alert_service, network_service
 

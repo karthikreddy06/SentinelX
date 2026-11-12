@@ -9,12 +9,11 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.database.connection import SessionLocal
-from app.fraud.cache import clear_all_fraud_cache, set_sender_profile
+from app.fraud.cache import clear_all_fraud_cache
 from app.fraud.features import extract_point_in_time_features
 from app.fraud.scorer import default_rules_engine
-from app.models.transaction import Transaction, TransactionStatus, TransactionType
+from app.models.transaction import Transaction, TransactionType
 
 
 def seed_benchmark_data(db: Session, sender_id: str, count: int = 50) -> Transaction:
