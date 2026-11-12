@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
 import logging
+from pathlib import Path
 import sys
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.api.v1 import api_router
@@ -75,9 +77,21 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 app.include_router(api_router, prefix="/api/v1")
 
+# Mount Static Frontend
+frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+if frontend_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
+
+    @app.get("/dashboard", response_class=FileResponse)
+    def dashboard():
+        return FileResponse(frontend_dir / "index.html")
+
 
 @app.get("/")
-def root():
+def root(request: Request):
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept and frontend_dir.exists():
+        return FileResponse(frontend_dir / "index.html")
     return {
         "message": "Welcome to SentinelX",
         "status": "running",
