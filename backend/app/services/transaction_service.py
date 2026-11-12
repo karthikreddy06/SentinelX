@@ -12,7 +12,6 @@ from app.models.transaction import (
     RiskLevel,
     Transaction,
     TransactionStatus,
-    TransactionType,
 )
 from app.schemas.transaction import (
     TransactionCreate,

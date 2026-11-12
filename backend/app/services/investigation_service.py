@@ -1,21 +1,18 @@
 from datetime import datetime, timezone
-import math
 import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.alert import Alert, AlertEvent, AlertStatus
 from app.models.investigation import (
-    EvidenceType,
     Investigation,
     InvestigationEvidence,
     InvestigationNote,
     InvestigationOutcome,
     InvestigationPriority,
     InvestigationStatus,
-    investigation_alerts,
 )
 from app.models.user import User, UserRole
 from app.schemas.investigation import (

@@ -1,7 +1,6 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from decimal import Decimal
 import uuid
-import pytest
 from sqlalchemy import select
 
 from app.core.security import create_access_token
@@ -9,7 +8,7 @@ from app.fraud.features import extract_point_in_time_features
 from app.fraud.scorer import RulesEngine
 from app.models.network import AccountNetworkRisk, NetworkRiskFlag
 from app.models.transaction import Transaction, TransactionStatus, TransactionType
-from app.models.user import User, UserRole
+from app.models.user import UserRole
 from app.services import network_service
 from app.tasks.maintenance_tasks import recalculate_network_graph_task
 

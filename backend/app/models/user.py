@@ -4,11 +4,9 @@ import uuid
 
 from sqlalchemy import (
     Boolean,
-    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
-    Index,
     String,
     text,
 )

@@ -2,7 +2,7 @@ from datetime import datetime
 import math
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_client_ip, require_roles

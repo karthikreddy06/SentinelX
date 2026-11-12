@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 import json
 import logging
 from typing import Any
-import uuid
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session

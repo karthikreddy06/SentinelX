@@ -8,7 +8,7 @@ from app.celery_app import celery_app
 from app.models.alert import Alert, AlertEvent, AlertSeverity, AlertStatus
 from app.models.fraud_score import FraudScore
 from app.models.outbox import OutboxEvent, OutboxStatus
-from app.models.transaction import RiskLevel, Transaction, TransactionStatus, TransactionType
+from app.models.transaction import RiskLevel, Transaction, TransactionType
 from app.models.user import RefreshToken, User, UserRole
 from app.tasks.maintenance_tasks import (
     check_model_drift_task,

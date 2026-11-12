@@ -7,7 +7,6 @@ from app.fraud.cache import invalidate_sender_profile
 from app.fraud.features import extract_point_in_time_features
 from app.fraud.scorer import default_rules_engine
 from app.models.fraud_score import FraudScore
-from app.models.transaction import Transaction
 from app.models.user import User
 from app.services.alert_service import create_alert_if_eligible
 from app.services.audit_service import record_audit_entry

@@ -1,11 +1,8 @@
 from datetime import datetime, timedelta, timezone
 import uuid
 
-import pytest
 from fastapi.testclient import TestClient
 
-from app.models.alert import Alert, AlertEvent, AlertSeverity, AlertStatus
-from app.models.transaction import RiskLevel, Transaction, TransactionStatus, TransactionType
 from app.models.user import User, UserRole
 
 
@@ -78,7 +75,7 @@ def test_alert_state_machine_and_timeline(client: TestClient, investigator_heade
 
     tx_id = create_high_risk_transaction(client, admin_headers)
 
-    alerts_resp = client.get(f"/api/v1/alerts?min_score=70", headers=admin_headers)
+    alerts_resp = client.get("/api/v1/alerts?min_score=70", headers=admin_headers)
     matching = [a for a in alerts_resp.json()["items"] if a["transaction_id"] == tx_id]
     assert len(matching) == 1
     alert_id = matching[0]["id"]

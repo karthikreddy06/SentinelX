@@ -1,5 +1,4 @@
-from datetime import datetime, timezone
-import math
+from datetime import datetime
 import uuid
 
 from fastapi import HTTPException, status
@@ -8,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.models.alert import Alert, AlertEvent, AlertSeverity, AlertStatus
-from app.models.transaction import RiskLevel, Transaction
+from app.models.transaction import RiskLevel
 from app.models.user import User, UserRole
 from app.schemas.alert import AlertUpdate
 
