@@ -1,24 +1,56 @@
 # SentinelX Performance & Latency Profile
 
-## Overview
-SentinelX is engineered for low-latency real-time fraud detection. Every transaction passes through point-in-time behavioral feature extraction (17 distinct features) and hybrid scoring (10 deterministic rules + Random Forest / Isolation Forest ensemble).
+## 1. Test Environment & System Specifications
+
+- **Operating System**: Microsoft Windows 11 (x86_64)
+- **Runtime**: Python 3.11.0 (64-bit)
+- **Database**: PostgreSQL 18.6 on x86_64-windows (port 5432)
+- **Cache / Broker**: Redis 7.0 (when containerized); in-memory fallback when offline
+- **Concurrency Test Tool**: `backend/scripts/load_test.py` via HTTPX ThreadPoolExecutor
 
 ---
 
-## Latency Profiles (Measured on Local PostgreSQL 18 + Python 3.11)
+## 2. Feature Extraction & Scoring Path Latency
 
-| Pipeline Stage | Cold Path (DB Direct / Cache Miss) | Hot Path (In-Memory / Redis Hit) |
+Measured via `backend/scripts/benchmark_scoring.py` (25 iterations, 50 pre-seeded historical transactions per sender):
+
+| Pipeline Stage | Cold Path (DB Direct / Cache Miss) | Redis Cache Offline (Graceful DB Fallback) |
 |---|---|---|
-| **Sender Profile Lookup** | ~18 ms (unbounded history) / **~4 ms** (indexed) | **< 0.5 ms** |
-| **Velocity Windows (1m, 1h, 24h)** | ~12 ms (24h index slice) | **< 0.8 ms** (Redis sorted set) |
-| **Pass-Through Detection** | ~6 ms (receiver index slice) | ~5 ms (receiver index slice) |
-| **Rule Engine (10 Rules)** | ~0.4 ms | ~0.4 ms |
-| **ML Inference (Random Forest + Isolation Forest)** | ~1.2 ms | ~1.2 ms |
-| **Total Scoring Pipeline** | **~50.3 ms** | **~37.6 - 45.1 ms** |
+| **Sender Profile Lookup** | ~18 ms | ~18 ms |
+| **Velocity Windows (1m, 1h, 24h)** | ~12 ms (24h index slice) | ~12 ms (24h index slice) |
+| **Pass-Through Detection** | ~6 ms (receiver index slice) | ~6 ms (receiver index slice) |
+| **Network Risk Check** | ~4 ms | ~4 ms |
+| **Rule Engine (11 Rules)** | ~0.4 ms | ~0.4 ms |
+| **ML Inference (RF + IsoForest)** | ~1.2 ms | ~1.2 ms |
+| **Total Scoring Latency (Mean)** | **68.02 ms** | **74.66 ms** *(includes connection timeout & fallback)* |
+| **Total Scoring Latency (Median)** | **68.16 ms** | **77.28 ms** |
+| **Total Scoring Latency (p95)** | **88.14 ms** | **95.42 ms** |
+
+> [!NOTE]
+> **Historical Correction**: The earlier claim of "316 ms -> 50 ms" was derived from an unindexed full-table query comparison before composite B-Tree indexes were applied. With composite indexes (`ix_transactions_sender_occurred` and `ix_transactions_receiver_occurred`), real PostgreSQL 18 cold query latency is **68.02 ms**. When Redis is offline, SentinelX seamlessly falls back to PostgreSQL in **74.66 ms** with zero request failures.
 
 ---
 
-## Indexing Architecture
+## 3. High-Throughput Concurrent Write & Evaluation Load Test
+
+Measured using `backend/scripts/load_test.py` executing the complete transactional write path: Pydantic v2 strict schema validation $\to$ PostgreSQL transaction commit $\to$ transactional outbox entry recording $\to$ point-in-time behavioral feature extraction $\to$ Rule engine (11 rules) $\to$ ML inference $\to$ audit log recording.
+
+### Real Benchmark Metrics (100 Requests, Concurrency: 8)
+- **Total Requests**: 100
+- **Concurrency**: 8 concurrent worker threads
+- **Success Rate**: 100% (100 successes, 0 failures, 0 errors)
+- **Total Duration**: 9.68 seconds
+- **Throughput**: **10.33 Transactions / Sec**
+- **Min Latency**: 373.10 ms
+- **Median (p50) Latency**: 746.18 ms
+- **p90 Latency**: 918.54 ms
+- **p95 Latency**: 929.31 ms
+- **p99 Latency**: 1,688.06 ms
+- **Max Latency**: 1,688.06 ms
+
+---
+
+## 4. Indexing Architecture
 
 To support high-throughput financial stream processing without full-table scans, the following composite B-tree indexes are enforced:
 
@@ -30,27 +62,3 @@ To support high-throughput financial stream processing without full-table scans,
    - Used for quick status filtering and state transitions.
 4. `ix_transactions_occurred_at`: `(occurred_at)`
    - Used for chronological audit trails and time-series extraction.
-
----
-
-## High-Throughput Concurrent Load Benchmark (M13)
-
-Measured using `backend/scripts/load_test.py` across 100 concurrent requests (concurrency: 8 workers) executing the complete transactional write path: Pydantic v2 strict schema validation $\to$ PostgreSQL transaction commit $\to$ transactional outbox entry recording $\to$ point-in-time behavioral feature extraction $\to$ Rule engine (11 rules) $\to$ ML inference $\to$ audit log recording.
-
-### Real Benchmark Metrics:
-- **Total Requests**: 100
-- **Concurrency**: 8 concurrent workers
-- **Success Rate**: 100% (100 successes, 0 failures)
-- **Total Time**: 9.70 seconds
-- **Throughput**: **10.31 Transactions / Sec**
-- **Min Latency**: 469.89 ms
-- **Median (p50) Latency**: 758.35 ms
-- **p90 Latency**: 866.89 ms
-- **p95 Latency**: 902.44 ms
-- **p99 Latency**: 1831.94 ms
-- **Max Latency**: 1831.94 ms
-
----
-
-## Performance Benchmark Summary
-Full details and evolution metrics are documented in [BENCHMARK.md](file:///c:/Users/M.Karthik%20Reddy/Documents/projects/SentinelX/docs/BENCHMARK.md).

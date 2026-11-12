@@ -46,6 +46,8 @@ def ensure_uuidv7_exists(connection) -> None:
               'hex')::uuid;
             $$ LANGUAGE sql;
         """)
+    if connection.in_transaction():
+        connection.commit()
 
 
 def run_migrations_offline() -> None:
@@ -84,6 +86,8 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             context.run_migrations()
+        if connection.in_transaction():
+            connection.commit()
 
 
 if context.is_offline_mode():

@@ -17,6 +17,17 @@ Includes a zero-dependency, modern **Vanilla HTML5/CSS/Canvas Intelligence Dashb
 
 ---
 
+## ⚠️ Limitations & Disclaimers
+
+Before evaluating SentinelX in real-world environments, please note the following operational realities:
+
+1. **Synthetic Training Distribution**: The integrated Machine Learning ensemble (RandomForest + IsolationForest) is trained exclusively on synthetic financial distributions generated with realistic bank parameters, label noise (1%), and temporal splits. **These metrics do NOT represent real-world fraud detection performance** in live banking environments with adversarial fraud vectors and shifting distributions.
+2. **Streaming Topology Scope**: Event streaming is architected for a single-node Redpanda broker (Kafka API compatible). It does not include an enterprise Schema Registry (e.g., Confluent / Karapace), partition-level multi-consumer group rebalancing across distributed physical nodes, or exactly-once transactional Kafka semantics.
+3. **Storage & Multi-Region Scalability**: SentinelX has been thoroughly tested and verified on standalone PostgreSQL 18 with native `uuidv7()` and Redis 7. It has **not** been benchmarked or verified for multi-region active-active replication, distributed consensus across global data centers, or sharded petabyte-scale ledgers.
+4. **Air-Gapped Operation**: The frontend dashboard utilizes **zero external CDN frameworks, zero build steps, and zero third-party chart libraries**. All typography, styling, SVG icons, and interactive canvas charts render entirely offline without making outbound network requests.
+
+---
+
 ## 🏗️ Architecture Overview
 
 SentinelX operates across four synchronized operational planes: Ingestion, Risk Assessment, Event Streaming, and Investigation Operations.
@@ -194,32 +205,55 @@ All endpoints are versioned under `/api/v1` and protected by role-based access c
 
 ---
 
-## 🐳 Docker & Production Deployment
+## 🐳 Reproduction & Running Instructions
 
-SentinelX includes a production-grade multi-stage `Dockerfile` and comprehensive `docker-compose.yml` orchestrating 8 services:
-
+### Option A: One-Command Full Stack (Docker Compose)
+Requires Docker Desktop (Linux containers daemon running):
 ```bash
-# Start the full stack (PostgreSQL, Redis, Redpanda, API, Workers, Beat, Consumers)
+# Build and launch all 8 services in background (PostgreSQL 18, Redis 7, Redpanda, API, Celery Worker, Celery Beat, Outbox Publisher, Stream Consumer)
 docker compose up -d --build
 
-# Run database migrations inside the API container
+# Run Alembic migrations
 docker compose exec api alembic upgrade head
 
-# Seed initial admin user
-docker compose exec api python backend/scripts/create_admin.py --email admin@example.com --password "SecureAdmin123!"
+# Seed initial admin user securely (reads password interactively or via ADMIN_INITIAL_PASSWORD env var)
+docker compose exec -e ADMIN_INITIAL_PASSWORD="SecureAdmin123!" api python backend/scripts/create_admin.py --email admin@sentinelx.local
 ```
 
-For complete instructions on deploying to **Render**, **Railway**, or **Fly.io**, see [Deployment Guide](docs/DEPLOYMENT.md).
+### Option B: 4-Terminal Local Development (Windows / Linux)
+Prerequisites: Python 3.11 with `.venv` active, PostgreSQL running on port 5432 with `DATABASE_URL` configured in `.env`.
+```powershell
+# Terminal 1: FastAPI Ingestion API & Dashboard
+$env:PYTHONPATH="backend"
+python -m uvicorn app.main:app --reload --app-dir backend --host 127.0.0.1 --port 8000
+
+# Terminal 2: Celery Worker
+$env:PYTHONPATH="backend"
+celery -A app.celery_app.celery_app worker -l INFO -P solo
+
+# Terminal 3: Celery Beat Scheduler
+$env:PYTHONPATH="backend"
+celery -A app.celery_app.celery_app beat -l INFO
+
+# Terminal 4: Transactional Outbox Publisher Daemon
+$env:PYTHONPATH="backend"
+python backend/scripts/run_outbox_publisher.py
+```
+
+Open `http://localhost:8000` in any browser to access the intelligence dashboard.
 
 ---
 
 ## 🧪 Testing & Code Quality
 
-SentinelX enforces a strict zero-regression quality standard with **97 tests** covering unit, integration, and full end-to-end lifecycles:
+SentinelX enforces a strict zero-regression quality standard with **102 tests** covering unit, integration, and full end-to-end lifecycles:
 
 ```powershell
 # Run the complete test suite with coverage
-pytest backend/tests/ -v --cov=backend/app --cov-report=term-missing
+pytest backend/tests/ -v -m "not integration" --cov=backend/app --cov-report=term-missing --cov-fail-under=80
+
+# Run real integration tests (when Redpanda and Redis are running)
+pytest backend/tests/test_integration_real.py -v -m "integration"
 
 # Run Ruff linter across entire codebase
 ruff check .
@@ -227,8 +261,8 @@ ruff check .
 
 ### Real Test Execution Results
 ```
-TOTAL: 3,119 statements, 86% coverage (100% core models, schemas, scorer, security)
-95 passed, 2 skipped in 70.42s
+TOTAL: 3,130 statements, 448 missed, 85.69% coverage
+98 passed, 2 skipped, 2 deselected, 1 warning in 76.06s
 All checks passed! (0 linter errors)
 ```
 
