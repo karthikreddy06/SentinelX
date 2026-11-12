@@ -3,7 +3,6 @@ import enum
 import uuid
 
 from sqlalchemy import (
-    CheckConstraint,
     Column,
     DateTime,
     Enum,

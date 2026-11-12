@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.kafka import get_kafka_producer, send_kafka_message
-from app.models.outbox import OutboxEvent, OutboxStatus
+from app.models.outbox import OutboxStatus
 from app.services.outbox_service import (
     fetch_pending_outbox_events,
     mark_outbox_event_failed,

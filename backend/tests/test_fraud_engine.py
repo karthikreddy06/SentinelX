@@ -2,13 +2,10 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import uuid
 
-import pytest
 
-from app.core.config import settings
 from app.fraud.features import extract_point_in_time_features
 from app.fraud.scorer import default_rules_engine
-from app.models.transaction import RiskLevel, Transaction, TransactionStatus, TransactionType
-from app.services.fraud_service import get_transaction_risk_history, score_transaction
+from app.models.transaction import Transaction, TransactionStatus, TransactionType
 
 
 def create_raw_tx(

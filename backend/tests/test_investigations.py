@@ -1,17 +1,6 @@
-from datetime import datetime, timedelta, timezone
-import uuid
 
-import pytest
 from fastapi.testclient import TestClient
 
-from app.models.alert import Alert, AlertEvent, AlertSeverity, AlertStatus
-from app.models.investigation import (
-    EvidenceType,
-    Investigation,
-    InvestigationOutcome,
-    InvestigationPriority,
-    InvestigationStatus,
-)
 from app.models.user import User, UserRole
 from tests.test_alerts import create_high_risk_transaction
 
@@ -171,7 +160,7 @@ def test_investigation_rbac_and_filters(
     inv_id = create_inv.json()["id"]
 
     # Analyst can view list and filters
-    list_resp = client.get(f"/api/v1/investigations?priority=urgent", headers=analyst_headers)
+    list_resp = client.get("/api/v1/investigations?priority=urgent", headers=analyst_headers)
     assert list_resp.status_code == 200
     assert list_resp.json()["total"] >= 1
 

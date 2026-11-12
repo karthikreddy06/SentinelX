@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 import sys
 from urllib.parse import urlparse, urlunparse
-import uuid
 
 # Ensure backend directory is in sys.path
 backend_dir = Path(__file__).resolve().parents[1]

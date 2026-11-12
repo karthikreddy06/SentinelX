@@ -6,18 +6,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core import redis as redis_module
-from app.core.config import settings
-from app.core.rate_limiter import HybridRateLimiter, InMemoryRateLimiter, RedisRateLimiter
+from app.core.rate_limiter import HybridRateLimiter
 from app.fraud.cache import (
-    clear_all_fraud_cache,
     get_sender_profile,
     get_transaction_velocity,
     invalidate_sender_profile,
     record_transaction_velocity,
     set_sender_profile,
 )
-from app.models.transaction import Transaction, TransactionType
-from app.services.fraud_service import score_transaction
 
 
 def test_redis_health_endpoint(client: TestClient):

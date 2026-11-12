@@ -3,17 +3,12 @@ import json
 from unittest.mock import MagicMock, patch
 import uuid
 
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
-from app.core import kafka as kafka_module
 from app.core.config import settings
-from app.models.alert import Alert
-from app.models.outbox import OutboxEvent, OutboxStatus
-from app.models.transaction import RiskLevel, Transaction, TransactionStatus, TransactionType
+from app.models.outbox import OutboxStatus
+from app.models.transaction import Transaction, TransactionType
 from app.services.outbox_service import (
-    fetch_pending_outbox_events,
     list_outbox_events,
     record_outbox_event,
 )

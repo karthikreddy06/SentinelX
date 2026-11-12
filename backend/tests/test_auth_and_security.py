@@ -1,12 +1,9 @@
 from datetime import datetime, timedelta, timezone
-import time
 import uuid
 
 import pytest
 
 from app.core.config import settings
-from app.core.rate_limiter import rate_limiter
-from app.core.security import create_access_token
 
 
 # === AUTHENTICATION TESTS ===

@@ -11,7 +11,6 @@ from app.services.user_service import (
     UserAlreadyExists,
     UserNotFound,
     create_user,
-    get_user_by_id,
     list_users,
     update_user,
 )

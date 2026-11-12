@@ -1,16 +1,10 @@
-import copy
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import patch
 
-import pytest
 
 from app.fraud.scorer import default_rules_engine
-from app.ml.model_loader import ModelManager, model_manager
+from app.ml.model_loader import model_manager
 from app.ml.predictor import predict_fraud_score
-from app.models.transaction import RiskLevel, Transaction, TransactionStatus, TransactionType
+from app.models.transaction import Transaction, TransactionType
 from ml.synthetic import generate_synthetic_transactions
-from ml.train import extract_features_from_synthetic
 
 
 # === GENERATOR DETERMINISM & NO LEAKAGE ===

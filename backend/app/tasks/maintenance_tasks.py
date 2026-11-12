@@ -3,7 +3,6 @@ import logging
 from typing import Any
 
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
 from app.core.config import settings

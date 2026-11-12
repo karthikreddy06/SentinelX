@@ -33,5 +33,24 @@ To support high-throughput financial stream processing without full-table scans,
 
 ---
 
+## High-Throughput Concurrent Load Benchmark (M13)
+
+Measured using `backend/scripts/load_test.py` across 100 concurrent requests (concurrency: 8 workers) executing the complete transactional write path: Pydantic v2 strict schema validation $\to$ PostgreSQL transaction commit $\to$ transactional outbox entry recording $\to$ point-in-time behavioral feature extraction $\to$ Rule engine (11 rules) $\to$ ML inference $\to$ audit log recording.
+
+### Real Benchmark Metrics:
+- **Total Requests**: 100
+- **Concurrency**: 8 concurrent workers
+- **Success Rate**: 100% (100 successes, 0 failures)
+- **Total Time**: 9.70 seconds
+- **Throughput**: **10.31 Transactions / Sec**
+- **Min Latency**: 469.89 ms
+- **Median (p50) Latency**: 758.35 ms
+- **p90 Latency**: 866.89 ms
+- **p95 Latency**: 902.44 ms
+- **p99 Latency**: 1831.94 ms
+- **Max Latency**: 1831.94 ms
+
+---
+
 ## Performance Benchmark Summary
 Full details and evolution metrics are documented in [BENCHMARK.md](file:///c:/Users/M.Karthik%20Reddy/Documents/projects/SentinelX/docs/BENCHMARK.md).
