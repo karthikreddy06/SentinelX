@@ -50,12 +50,13 @@ def apply_migrations():
     root_dir = Path(__file__).resolve().parents[2]
     alembic_ini_path = root_dir / "alembic.ini"
     cfg = Config(str(alembic_ini_path))
+    cfg.set_main_option("sqlalchemy.url", test_db_url)
     command.upgrade(cfg, "head")
     yield
 
 
 @pytest.fixture(autouse=True)
-def clean_database():
+def clean_database(apply_migrations):
     """Truncate tables and reset in-memory limiters before and after test runs to ensure isolation."""
     rate_limiter.reset()
     clear_all_fraud_cache()

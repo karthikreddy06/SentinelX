@@ -211,9 +211,11 @@ def train_models(
     num_accounts: int = 150,
     days: int = 21,
     seed: int = 42,
-    output_dir: str = "ml",
+    output_dir: str | None = None,
 ) -> dict[str, Any]:
     """Train supervised and unsupervised models with comprehensive validation and ablation."""
+    if output_dir is None:
+        output_dir = os.environ.get("SENTINELX_ML_OUTPUT_DIR", "ml")
     print("Generating synthetic data with multi-modal amounts, stealth attacks, and realistic label noise...")
     transactions = generate_synthetic_transactions(
         num_accounts=num_accounts, days=days, seed=seed, fraud_rate=0.02

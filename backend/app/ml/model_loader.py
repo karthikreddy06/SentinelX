@@ -5,15 +5,26 @@ from typing import Any
 
 import joblib
 
+import os
+
 logger = logging.getLogger("sentinelx.ml")
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_ARTIFACT_DIR = _PROJECT_ROOT / "ml" / "artifacts"
+
+
+def get_default_artifact_dir() -> Path:
+    override = os.environ.get("SENTINELX_ML_ARTIFACT_DIR")
+    if override:
+        return Path(override)
+    output_dir = os.environ.get("SENTINELX_ML_OUTPUT_DIR")
+    if output_dir:
+        return Path(output_dir) / "artifacts"
+    return _PROJECT_ROOT / "ml" / "artifacts"
 
 
 class ModelManager:
     def __init__(self, artifact_dir: Path | None = None) -> None:
-        self.artifact_dir = artifact_dir or _DEFAULT_ARTIFACT_DIR
+        self.artifact_dir = artifact_dir or get_default_artifact_dir()
         self._bundle: dict[str, Any] | None = None
         self._metadata: dict[str, Any] | None = None
         self.load_model()

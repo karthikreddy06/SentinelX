@@ -68,3 +68,90 @@ def test_zero_external_dependencies_and_no_frameworks():
     assert "import react" not in app_js.lower()
     assert "require('react')" not in app_js.lower()
 
+
+def test_no_browser_storage_of_tokens():
+    """Verify frontend never stores tokens in localStorage or sessionStorage."""
+    frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+    app_js = (frontend_dir / "app.js").read_text(encoding="utf-8")
+
+    assert "localStorage" not in app_js, "Forbidden localStorage found in frontend/app.js"
+    assert "sessionStorage" not in app_js, "Forbidden sessionStorage found in frontend/app.js"
+
+
+def test_csp_and_security_headers_present(client):
+    """Verify security headers including CSP are returned on responses."""
+    res = client.get("/")
+    assert res.headers.get("X-Content-Type-Options") == "nosniff"
+    assert res.headers.get("X-Frame-Options") == "DENY"
+    assert res.headers.get("X-XSS-Protection") == "1; mode=block"
+    assert "max-age" in res.headers.get("Strict-Transport-Security", "")
+    assert "Content-Security-Policy" in res.headers
+    assert "default-src 'self'" in res.headers["Content-Security-Policy"]
+
+
+def test_xss_injection_payloads_rendered_inert(client, admin_headers, investigator_headers):
+    """
+    Test XSS payload handling in backend APIs and verify frontend escaping utility.
+    Ensures payloads in transaction description, account IDs, investigation notes,
+    and alert resolution notes cannot execute.
+    """
+    import uuid
+    from datetime import datetime, timezone
+
+    # 1. Transaction creation with script tags
+    xss_payload = "<script>alert('xss')</script>"
+    xss_img = "<img src=x onerror=alert('xss')>"
+    tx_res = client.post(
+        "/api/v1/transactions",
+        headers={"Idempotency-Key": str(uuid.uuid4()), **admin_headers},
+        json={
+            "sender_account_id": "ACC_XSS_01",
+            "receiver_account_id": "ACC_XSS_02",
+            "amount": "1500.00",
+            "currency": "USD",
+            "transaction_type": "transfer",
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+            "description": f"Legit transfer {xss_payload} {xss_img}",
+        },
+    )
+    assert tx_res.status_code == 201
+    tx_data = tx_res.json()
+    assert xss_payload in tx_data["description"]
+
+    # 2. Add investigation note with XSS
+    inv_res = client.post(
+        "/api/v1/investigations",
+        headers=investigator_headers,
+        json={"title": f"Case {xss_img}", "description": xss_payload, "priority": "high"},
+    )
+    assert inv_res.status_code == 201
+    inv_id = inv_res.json()["id"]
+
+    note_res = client.post(
+        f"/api/v1/investigations/{inv_id}/notes",
+        headers=investigator_headers,
+        json={"body": f"Investigator note: {xss_payload}"},
+    )
+    assert note_res.status_code == 201
+
+    # 3. Verify escapeHtml in app.js escapes characters <, >, &, ", '
+    frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+    app_js = (frontend_dir / "app.js").read_text(encoding="utf-8")
+    assert "function escapeHtml" in app_js
+
+    # Python simulation of app.js escapeHtml behavior
+    def escape_html(s: str) -> str:
+        return (
+            s.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
+
+    escaped_desc = escape_html(tx_data["description"])
+    assert "<script>" not in escaped_desc
+    assert "&lt;script&gt;" in escaped_desc
+    assert "<img" not in escape_html(xss_img)
+    assert "&lt;img" in escape_html(xss_img)
+

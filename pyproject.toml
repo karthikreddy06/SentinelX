@@ -15,3 +15,6 @@ ignore = [
 testpaths = ["backend/tests"]
 pythonpath = [".", "backend"]
 addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests requiring external infrastructure (Redpanda, Celery worker) to be running",
+]

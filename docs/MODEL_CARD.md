@@ -105,6 +105,14 @@ Evaluated on chronologically partitioned held-out test data (Train 70%, Validati
 
 ---
 
-## Limitations & Fallback Protocol
-- **Fallback**: If the ML artifact is unavailable, corrupted, or disabled via configuration, SentinelX automatically falls back to 100% rules-based scoring with zero downtime or request degradation.
-- **Drift**: Synthetic data does not exhibit real macroeconomic drift or evolving adversarial evasion techniques. Production deployment requires continuous monitoring and retraining.
+## Limitations & Explicit Disclaimers
+
+### What These Metrics Do NOT Prove
+1. **Adversarial Realism**: Synthetic fraud patterns are generated according to parameterized distributions. They do **not** reflect real-world adversarial evasion where human fraudsters actively probe and adapt to model decision boundaries.
+2. **Production Banking Generalization**: High ROC-AUC on synthetic held-out splits does **not** guarantee equivalent performance on authentic production transactions, heterogeneous customer demographics, or multi-currency payment networks.
+3. **Ground-Truth Label Latency**: Real-world fraud labels typically suffer from 30- to 90-day reporting delays (chargebacks, claims). In synthetic training, ground truth is instantaneously available at generation time.
+4. **False Positive Business Impact**: A 45.8% false alarm rate (precision 0.5417) on a 5% fraud stream represents 11 false positives per 24 flagged transactions. In high-volume production payment processing, this would require careful calibration to prevent customer checkout abandonment.
+
+### Fallback Protocol & Continuous Monitoring
+- **Automatic Rules Fallback**: If the ML artifact is unavailable, corrupted, or disabled via `FRAUD_SCORING_ENABLED=False`, SentinelX automatically falls back to 100% deterministic rules-based scoring with zero downtime or request failure.
+- **Model Drift Detection**: Celery Beat schedules daily distribution divergence checks (`check_model_drift_task`) monitoring feature drift against the baseline artifact.

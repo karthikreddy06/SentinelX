@@ -42,22 +42,23 @@ def test_complete_fraud_lifecycle_e2e(client, create_test_user, db_session):
 
     # --- STEP 2: TRANSACTION INGESTION & OUTBOX RECORDING ---
     now = datetime.now(timezone.utc)
-    # Seed an earlier legitimate transaction 20 mins prior from US
-    tx_prior = Transaction(
-        id=uuid.uuid4(),
-        idempotency_key=f"prior-{uuid.uuid4()}",
-        sender_account_id="ACCT-E2E-ATTACKER",
-        receiver_account_id="MERCH-LOCAL-STORE",
-        amount=Decimal("15.00"),
-        currency="USD",
-        transaction_type=TransactionType.PAYMENT,
-        status=TransactionStatus.COMPLETED,
-        occurred_at=now - timedelta(minutes=20),
-        device_id="DEV-HOME-PHONE",
-        ip_address="12.34.56.78",
-        country_code="US",
-    )
-    db_session.add(tx_prior)
+    # Seed earlier legitimate transactions establishing user profile from US
+    for m in [20, 10]:
+        tx_prior = Transaction(
+            id=uuid.uuid4(),
+            idempotency_key=f"prior-{m}-{uuid.uuid4()}",
+            sender_account_id="ACCT-E2E-ATTACKER",
+            receiver_account_id="MERCH-LOCAL-STORE",
+            amount=Decimal("15.00"),
+            currency="USD",
+            transaction_type=TransactionType.PAYMENT,
+            status=TransactionStatus.COMPLETED,
+            occurred_at=now - timedelta(minutes=m),
+            device_id="DEV-HOME-PHONE",
+            ip_address="12.34.56.78",
+            country_code="US",
+        )
+        db_session.add(tx_prior)
     db_session.commit()
 
     idempotency_key = f"e2e-idemp-{uuid.uuid4()}"

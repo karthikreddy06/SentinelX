@@ -2,7 +2,7 @@ name: SentinelX CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, "phase-**"]
   pull_request:
     branches: [main]
 
@@ -72,4 +72,4 @@ jobs:
           DEBUG: "True"
           PYTHONPATH: .:backend
         run: |
-          pytest backend/tests/ -v --cov=backend/app --cov-report=term-missing --cov-fail-under=80
+          pytest backend/tests/ -v -m "not integration" --cov=backend/app --cov-report=term-missing --cov-fail-under=80
