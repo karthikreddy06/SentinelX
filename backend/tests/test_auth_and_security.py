@@ -262,3 +262,41 @@ def test_security_headers_and_request_id(client):
     assert res.headers["X-Content-Type-Options"] == "nosniff"
     assert res.headers["X-Frame-Options"] == "DENY"
     assert res.headers["X-XSS-Protection"] == "1; mode=block"
+
+
+# === JWT SECRET SAFETY TESTS ===
+
+def test_validate_jwt_secret_enforcement():
+    from app.core.config import Settings, validate_jwt_secret
+
+    # 1. In DEBUG=True mode, defaults pass for local development convenience
+    debug_cfg = Settings(DEBUG=True, JWT_SECRET_KEY="short-dev-secret", DATABASE_URL=settings.DATABASE_URL)
+    validate_jwt_secret(debug_cfg)  # must not raise
+
+    # 2. In DEBUG=False mode, empty secret raises ValueError
+    prod_empty = Settings(DEBUG=False, JWT_SECRET_KEY="", DATABASE_URL=settings.DATABASE_URL)
+    with pytest.raises(ValueError, match="JWT_SECRET_KEY must be configured"):
+        validate_jwt_secret(prod_empty)
+
+    # 3. In DEBUG=False mode, secret < 32 chars raises ValueError
+    prod_short = Settings(DEBUG=False, JWT_SECRET_KEY="too-short-secret-key-12345", DATABASE_URL=settings.DATABASE_URL)
+    with pytest.raises(ValueError, match="under 32 characters"):
+        validate_jwt_secret(prod_short)
+
+    # 4. In DEBUG=False mode, default placeholder secret raises ValueError
+    prod_placeholder = Settings(
+        DEBUG=False,
+        JWT_SECRET_KEY="sentinelx-insecure-secret-key-change-in-production-12345",
+        DATABASE_URL=settings.DATABASE_URL,
+    )
+    with pytest.raises(ValueError, match="known default placeholder"):
+        validate_jwt_secret(prod_placeholder)
+
+    # 5. Strong secret >= 32 characters passes in DEBUG=False mode
+    prod_strong = Settings(
+        DEBUG=False,
+        JWT_SECRET_KEY="a-very-strong-cryptographically-random-secret-key-32chars!",
+        DATABASE_URL=settings.DATABASE_URL,
+    )
+    validate_jwt_secret(prod_strong)  # must not raise
+

@@ -41,4 +41,42 @@ class Settings(BaseSettings):
     )
 
 
+INSECURE_JWT_PLACEHOLDERS = {
+    "sentinelx-insecure-secret-key-change-in-production-12345",
+    "secret",
+    "changeme",
+    "password",
+    "your-secret-key",
+    "jwt-secret-key",
+    "default-secret-key",
+}
+
+
+def validate_jwt_secret(settings_obj: Settings | None = None) -> None:
+    """
+    Validate JWT_SECRET_KEY safety.
+    When DEBUG=False (production mode), raise ValueError if:
+      - secret is missing
+      - length < 32 characters
+      - matches a known insecure placeholder
+    """
+    cfg = settings_obj or settings
+    secret = cfg.JWT_SECRET_KEY
+
+    if not cfg.DEBUG:
+        if not secret:
+            raise ValueError("JWT_SECRET_KEY must be configured in production (DEBUG=False).")
+        if len(secret) < 32:
+            raise ValueError(
+                f"JWT_SECRET_KEY is insecure: length ({len(secret)}) is under 32 characters."
+            )
+        if (
+            secret.lower() in INSECURE_JWT_PLACEHOLDERS
+            or "change-in-production" in secret.lower()
+        ):
+            raise ValueError(
+                "JWT_SECRET_KEY is set to a known default placeholder. A cryptographically secure secret is required in production."
+            )
+
+
 settings = Settings()

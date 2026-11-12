@@ -3,49 +3,122 @@
     "synthetic": true,
     "seed": 42,
     "num_accounts": 120,
-    "total_transactions": 1006,
-    "train_size": 704,
-    "val_size": 151,
-    "test_size": 151,
-    "fraud_prevalence_test": 0.053
+    "total_transactions": 694,
+    "train_size": 485,
+    "val_size": 104,
+    "test_size": 105,
+    "fraud_prevalence_test": 0.0762,
+    "leakage_audit_passed": true
+  },
+  "operating_threshold": 0.5,
+  "operating_threshold_rationale": "Threshold 0.50 provides the optimal trade-off between false alarms (FP) and fraud detection recall (FN) on class-imbalanced banking streams.",
+  "threshold_curve": [
+    {
+      "threshold": 0.1,
+      "precision": 0.2778,
+      "recall": 0.625,
+      "f1_score": 0.3846
+    },
+    {
+      "threshold": 0.2,
+      "precision": 0.4444,
+      "recall": 0.5,
+      "f1_score": 0.4706
+    },
+    {
+      "threshold": 0.3,
+      "precision": 0.6,
+      "recall": 0.375,
+      "f1_score": 0.4615
+    },
+    {
+      "threshold": 0.4,
+      "precision": 0.75,
+      "recall": 0.375,
+      "f1_score": 0.5
+    },
+    {
+      "threshold": 0.5,
+      "precision": 1.0,
+      "recall": 0.375,
+      "f1_score": 0.5455
+    },
+    {
+      "threshold": 0.6,
+      "precision": 1.0,
+      "recall": 0.375,
+      "f1_score": 0.5455
+    },
+    {
+      "threshold": 0.7,
+      "precision": 1.0,
+      "recall": 0.25,
+      "f1_score": 0.4
+    },
+    {
+      "threshold": 0.8,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0
+    },
+    {
+      "threshold": 0.9,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0
+    }
+  ],
+  "rules_only_baseline": {
+    "precision": 0.6667,
+    "recall": 0.25,
+    "f1_score": 0.3636,
+    "roc_auc": 0.7558
+  },
+  "ablation_without_current_amount": {
+    "precision": 1.0,
+    "recall": 0.375,
+    "f1_score": 0.5455,
+    "roc_auc": 0.788
   },
   "validation_metrics": {
-    "f1_score": 0.9048,
-    "roc_auc": 0.9886
+    "f1_score": 0.0,
+    "ml_f1_score": 0.0,
+    "hybrid_f1_score": 0.0,
+    "roc_auc": 0.7549
   },
   "test_metrics": {
     "precision": 1.0,
-    "recall": 1.0,
-    "f1_score": 1.0,
-    "roc_auc": 1.0,
-    "pr_auc": 1.0,
+    "recall": 0.375,
+    "f1_score": 0.5455,
+    "roc_auc": 0.8692,
+    "pr_auc": 0.5748,
     "confusion_matrix": {
-      "tn": 143,
+      "tn": 97,
       "fp": 0,
-      "fn": 0,
-      "tp": 8
+      "fn": 5,
+      "tp": 3
     }
   },
   "top_features": [
     [
       "current_amount",
-      0.5472
+      0.3016
     ],
     [
       "is_first_time_receiver",
-      0.1044
-    ],
-    [
-      "z_score",
-      0.0895
+      0.1522
     ],
     [
       "avg_amount",
-      0.0462
+      0.152
     ],
     [
-      "velocity_1h_count",
-      0.0432
+      "std_amount",
+      0.098
+    ],
+    [
+      "velocity_1m_count",
+      0.0799
     ]
   ]
 }

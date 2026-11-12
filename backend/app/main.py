@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import logging
 import sys
 
@@ -7,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.api.v1 import api_router
-from app.core.config import settings
+from app.core.config import settings, validate_jwt_secret
 from app.core.middleware import (
     RedactingJSONFormatter,
     RequestIDMiddleware,
@@ -26,10 +27,20 @@ root_logger.handlers = [handler]
 
 logger = logging.getLogger("sentinelx.app")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Enforce JWT Secret safety at startup in production
+    validate_jwt_secret(settings)
+    yield
+    redis_core.close_redis_connection()
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="Real-Time Fraud Detection & Intelligence Platform",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Hardening Middlewares

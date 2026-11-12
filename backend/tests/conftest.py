@@ -53,9 +53,16 @@ def apply_migrations():
 
 @pytest.fixture(autouse=True)
 def clean_database():
-    """Truncate tables and reset in-memory limiters between test runs to ensure isolation."""
+    """Truncate tables and reset in-memory limiters before and after test runs to ensure isolation."""
     rate_limiter.reset()
     clear_all_fraud_cache()
+    with test_engine.connect() as conn:
+        conn.execute(
+            text(
+                "TRUNCATE TABLE investigation_notes, investigation_evidence, investigation_alerts, investigations, alert_events, alerts, fraud_scores, audit_logs, refresh_tokens, users, transactions RESTART IDENTITY CASCADE"
+            )
+        )
+        conn.commit()
     yield
     rate_limiter.reset()
     clear_all_fraud_cache()
