@@ -2,8 +2,8 @@
 
 ## Model Overview
 - **Model Name**: SentinelX Fraud Classifier (`ml_v1.0.0`)
-- **Architecture**: Hybrid Ensemble — Supervised `RandomForestClassifier` (100 trees, max depth 8, balanced class weights) coupled with Unsupervised `IsolationForest` (contamination 0.05).
-- **Artifact**: `ml/artifacts/sentinelx_ml_v1.0.0.joblib` (203.8 KB)
+- **Architecture**: Hybrid Ensemble — Supervised `RandomForestClassifier` (100 trees, max depth 8, balanced class weights) coupled with Unsupervised `IsolationForest` (contamination 0.03).
+- **Artifact**: `ml/artifacts/sentinelx_ml_v1.0.0.joblib` (365.5 KB)
 - **Metadata**: `ml/artifacts/sentinelx_ml_v1.0.0.json`
 - **Report**: `ml/reports/metrics.json`
 - **Date**: November 2026
@@ -21,7 +21,7 @@
 
 > [!WARNING]
 > **CRITICAL SYNTHETIC DATA NOTICE**:
-> This model is trained and evaluated **exclusively on synthetically generated transactions** produced by `ml/synthetic.py` (seed: 42). All accounts (`ACC_0000` to `ACC_0099`), amounts, device IDs, IP addresses, and injected fraud patterns (account takeovers, velocity bursts, structuring, impossible travel, mule pass-throughs) are synthetic. Under no circumstances should these metrics be represented as production performance on real-world bank customer traffic without re-training and validation on authentic institution data.
+> This model is trained and evaluated **exclusively on synthetically generated transactions** produced by `ml/synthetic.py` (seed: 42). All accounts (`ACC_0000` to `ACC_0149`), amounts, device IDs, IP addresses, and injected fraud patterns (stealth account takeovers, card testing, velocity bursts, structuring, impossible travel, mule pass-throughs) are synthetic. Under no circumstances should these metrics be represented as production performance on real-world bank customer traffic without re-training and validation on authentic institution data.
 
 ---
 
@@ -52,26 +52,56 @@ Evaluated on chronologically partitioned held-out test data (Train 70%, Validati
 
 | Metric | Score |
 |---|---|
-| **Precision** | `1.0000` |
-| **Recall** | `0.9375` |
-| **F1 Score** | `0.9677` |
-| **ROC-AUC** | `0.9994` |
-| **PR-AUC (Avg Precision)** | `0.9931` |
+| **Precision** | `0.5417` |
+| **Recall** | `0.8667` |
+| **F1 Score** | `0.6667` |
+| **ROC-AUC** | `0.9764` |
+| **PR-AUC (Avg Precision)** | `0.8356` |
 
 ### Confusion Matrix
-- **True Negatives (TN)**: 217
-- **False Positives (FP)**: 0
-- **False Negatives (FN)**: 1
-- **True Positives (TP)**: 15
+- **True Negatives (TN)**: 272
+- **False Positives (FP)**: 11
+- **False Negatives (FN)**: 2
+- **True Positives (TP)**: 13
+
+---
+
+## Benchmark Comparisons & Ablation
+
+### 1. Rules-Only Baseline (10 Transparent Rules)
+- **Precision**: `1.0000`
+- **Recall**: `0.1333`
+- **F1 Score**: `0.2353`
+- *Observation*: The rules-only baseline achieves 100% precision on rigid patterns (e.g. structuring, impossible travel), but misses 86.7% of stealth/burst/card-testing fraud.
+
+### 2. Feature Ablation (Model trained without `current_amount`)
+- **Precision**: `0.5417`
+- **Recall**: `0.8667`
+- **F1 Score**: `0.6667`
+- **ROC-AUC**: `0.9651`
+- *Observation*: Behavioral features (velocities, deviation z-scores, device/IP novelty, structuring counts) retain 96.5% ROC-AUC without any knowledge of raw transaction amount, confirming the model does not depend on simplistic amount thresholds.
+
+### 3. Precision-Recall Curve Across Thresholds
+| Operating Threshold | Precision | Recall | F1 Score |
+|---|---|---|---|
+| `0.20` | `0.1442` | `1.0000` | `0.2521` |
+| `0.30` | `0.2593` | `0.9333` | `0.4058` |
+| `0.40` | `0.3889` | `0.9333` | `0.5490` |
+| **`0.50` (Chosen)** | **`0.5417`** | **`0.8667`** | **`0.6667`** |
+| `0.60` | `0.6667` | `0.8000` | `0.7273` |
+| `0.70` | `0.7857` | `0.7333` | `0.7586` |
+| `0.80` | `1.0000` | `0.6000` | `0.7500` |
+
+*Rationale for Threshold 0.50*: Balances investigator workload and catches 86.7% of all fraud incidents on class-imbalanced banking streams.
 
 ---
 
 ## Top Contributing Features
-1. `z_score` (Statistical deviation from account baseline)
-2. `current_amount` (Monetary scale)
-3. `velocity_1h_count` (Short-term transaction burst)
-4. `impossible_travel` (Cross-border geographical conflict)
-5. `total_structuring_count` (Regulatory threshold evasion)
+1. `current_amount` (17.75%)
+2. `avg_amount` (12.75%)
+3. `std_amount` (11.52%)
+4. `z_score` (10.28%)
+5. `velocity_1h_count` (10.16%)
 
 ---
 

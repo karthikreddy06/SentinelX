@@ -1,7 +1,8 @@
+import argparse
 import getpass
 import os
-import sys
 from pathlib import Path
+import sys
 
 # Add backend directory to sys.path
 backend_dir = Path(__file__).resolve().parents[1]
@@ -14,9 +15,38 @@ from app.database.connection import SessionLocal
 from app.models.user import User, UserRole
 
 
+def parse_args() -> argparse.Namespace:
+    # Explicitly disallow any CLI password argument for security
+    for arg in sys.argv[1:]:
+        if arg.startswith("--pass") or arg == "-p":
+            print("SECURITY ERROR: Passing passwords via CLI arguments is strictly forbidden. Use interactive prompt or ADMIN_PASSWORD in .env.")
+            sys.exit(1)
+
+    parser = argparse.ArgumentParser(
+        description="SentinelX Admin Provisioning CLI. Creates or promotes an admin user."
+    )
+    parser.add_argument(
+        "--email",
+        "-e",
+        type=str,
+        help="Admin email address (overrides ADMIN_EMAIL in .env)",
+    )
+    parser.add_argument(
+        "--name",
+        "-n",
+        type=str,
+        default="System Administrator",
+        help="Admin full name (default: System Administrator)",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
     print("=== SentinelX Admin Provisioning CLI ===")
-    email = settings.ADMIN_EMAIL
+    args = parse_args()
+
+    email = args.email or settings.ADMIN_EMAIL
+    name = args.name
     password = settings.ADMIN_PASSWORD
 
     if not email:
@@ -43,13 +73,15 @@ def main() -> None:
             existing.hashed_password = hashed
             existing.role = UserRole.ADMIN
             existing.is_active = True
+            if args.name != "System Administrator":
+                existing.full_name = args.name
             db.commit()
             print(f"Success: Existing user '{norm_email}' updated to active ADMIN role.")
         else:
             admin_user = User(
                 email=norm_email,
                 hashed_password=hashed,
-                full_name="System Administrator",
+                full_name=name,
                 role=UserRole.ADMIN,
                 is_active=True,
             )

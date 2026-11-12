@@ -101,6 +101,7 @@ def extract_point_in_time_features(
         last_tx = sender_history[0] if sender_history else None
         last_country = last_tx.country_code if last_tx else None
         last_tx_time = last_tx.occurred_at if last_tx else None
+        night_tx_count = sum(1 for t in sender_history if t.occurred_at.hour in [1, 2, 3, 4])
 
         # Populate Redis cache with computed profile
         set_sender_profile(
@@ -116,6 +117,7 @@ def extract_point_in_time_features(
                 "prev_ips": list(prev_ips),
                 "last_tx_country": last_country,
                 "last_tx_occurred_at": last_tx_time.isoformat() if last_tx_time else None,
+                "night_tx_count": night_tx_count,
             },
         )
 
@@ -189,38 +191,41 @@ def extract_point_in_time_features(
     current_hour = tx_time.hour
     is_night_hour = current_hour in [1, 2, 3, 4]
     if is_night_hour and total_history_count >= 5:
-        if not sender_history:
-            history_query = (
-                select(Transaction)
-                .where(
-                    Transaction.sender_account_id == sender_id,
-                    Transaction.occurred_at < tx_time,
+        if use_cached_profile and cached_profile:
+            night_txs = cached_profile.get("night_tx_count", 0)
+        else:
+            if not sender_history:
+                history_query = (
+                    select(Transaction)
+                    .where(
+                        Transaction.sender_account_id == sender_id,
+                        Transaction.occurred_at < tx_time,
+                    )
+                    .order_by(Transaction.occurred_at.desc())
                 )
-                .order_by(Transaction.occurred_at.desc())
-            )
-            sender_history = list(db.execute(history_query).scalars().all())
-        night_txs = sum(1 for t in sender_history if t.occurred_at.hour in [1, 2, 3, 4])
+                sender_history = list(db.execute(history_query).scalars().all())
+            night_txs = sum(1 for t in sender_history if t.occurred_at.hour in [1, 2, 3, 4])
         is_unusual_hour = (night_txs / total_history_count) < 0.05
     else:
         is_unusual_hour = False
 
-    # 7. Structuring Detection
+    # 7. Structuring Detection & Recent Failures (Efficient 24h index slice)
     def is_in_band(amt: float) -> bool:
         return (9000.0 <= amt <= 9999.99) or (900.0 <= amt <= 999.99)
 
-    if not sender_history:
-        history_query = (
-            select(Transaction)
-            .where(
-                Transaction.sender_account_id == sender_id,
-                Transaction.occurred_at < tx_time,
-            )
-            .order_by(Transaction.occurred_at.desc())
+    # If sender_history was already queried, reuse it; otherwise query only the recent 24h window
+    if sender_history:
+        active_recent_24h = [t for t in sender_history if t.occurred_at >= time_24h]
+    else:
+        recent_24h_query = select(Transaction).where(
+            Transaction.sender_account_id == sender_id,
+            Transaction.occurred_at >= time_24h,
+            Transaction.occurred_at < tx_time,
         )
-        sender_history = list(db.execute(history_query).scalars().all())
+        active_recent_24h = list(db.execute(recent_24h_query).scalars().all())
 
     structuring_24h = sum(
-        1 for t in sender_history if t.occurred_at >= time_24h and is_in_band(float(t.amount))
+        1 for t in active_recent_24h if is_in_band(float(t.amount))
     )
     current_is_structuring = is_in_band(current_amount)
     total_structuring_count = structuring_24h + (1 if current_is_structuring else 0)
@@ -234,7 +239,7 @@ def extract_point_in_time_features(
     # 9. Recent Failures Burst (failed or cancelled within last 1 hour)
     recent_failures = sum(
         1
-        for t in sender_history
+        for t in active_recent_24h
         if t.occurred_at >= time_1h
         and t.status in [TransactionStatus.FAILED, TransactionStatus.CANCELLED]
     )
