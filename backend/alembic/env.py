@@ -27,6 +27,27 @@ def get_url() -> str:
     return os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL") or settings.DATABASE_URL
 
 
+def ensure_uuidv7_exists(connection) -> None:
+    """Ensure uuidv7() function exists on PostgreSQL < 18."""
+    check = connection.exec_driver_sql(
+        "SELECT 1 FROM pg_proc WHERE proname = 'uuidv7'"
+    ).scalar()
+    if not check:
+        connection.exec_driver_sql("""
+            CREATE OR REPLACE FUNCTION uuidv7() RETURNS uuid AS $$
+            SELECT encode(
+              set_byte(
+                set_byte(
+                  overlay(uuid_send(gen_random_uuid()) placing substring(int8send(floor(extract(epoch from clock_timestamp()) * 1000)::bigint) from 3) from 1 for 6),
+                  6, (get_byte(uuid_send(gen_random_uuid()), 6) & 15) | 112
+                ),
+                8, (get_byte(uuid_send(gen_random_uuid()), 8) & 63) | 128
+              ),
+              'hex')::uuid;
+            $$ LANGUAGE sql;
+        """)
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = get_url()
@@ -54,6 +75,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        ensure_uuidv7_exists(connection)
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

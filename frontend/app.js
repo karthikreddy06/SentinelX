@@ -3,11 +3,22 @@
  * Pure Vanilla JavaScript (Zero External Frameworks / Zero Dependencies)
  */
 
-// Application State
+// --- HTML SANITIZATION UTILITY ---
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Application State (Tokens maintained purely in JavaScript memory to prevent XSS storage exfiltration)
 const state = {
-  token: sessionStorage.getItem("sx_token") || null,
-  refreshToken: sessionStorage.getItem("sx_refresh") || null,
-  user: JSON.parse(sessionStorage.getItem("sx_user") || "null"),
+  token: null,
+  refreshToken: null,
+  user: null,
   activeTab: "tab-overview",
   graphData: { nodes: [], edges: [] },
   graphSimulation: null,
@@ -65,8 +76,6 @@ async function attemptRefreshToken() {
     const data = await res.json();
     state.token = data.access_token;
     state.refreshToken = data.refresh_token;
-    sessionStorage.setItem("sx_token", state.token);
-    sessionStorage.setItem("sx_refresh", state.refreshToken);
     return true;
   } catch {
     return false;
@@ -111,13 +120,10 @@ async function login(email, password) {
 
     state.token = data.access_token;
     state.refreshToken = data.refresh_token;
-    sessionStorage.setItem("sx_token", state.token);
-    sessionStorage.setItem("sx_refresh", state.refreshToken);
 
     // Fetch user details
     const me = await apiFetch("/api/v1/auth/me");
     state.user = me;
-    sessionStorage.setItem("sx_user", JSON.stringify(me));
 
     updateAuthUI();
     closeLoginModal();
@@ -132,9 +138,6 @@ function logout() {
   state.token = null;
   state.refreshToken = null;
   state.user = null;
-  sessionStorage.removeItem("sx_token");
-  sessionStorage.removeItem("sx_refresh");
-  sessionStorage.removeItem("sx_user");
   updateAuthUI();
 }
 
@@ -243,10 +246,10 @@ async function renderOverviewAlerts() {
     container.innerHTML = alerts.map(a => `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.5rem; border-bottom: 1px solid var(--border-subtle);">
         <div>
-          <span class="badge badge-${a.severity.toLowerCase()}">${a.severity}</span>
-          <span style="font-size: 0.82rem; margin-left: 0.5rem; font-weight: 500;">Tx: ${a.transaction_id.slice(0, 8)}...</span>
+          <span class="badge badge-${escapeHtml(a.severity.toLowerCase())}">${escapeHtml(a.severity)}</span>
+          <span style="font-size: 0.82rem; margin-left: 0.5rem; font-weight: 500;">Tx: ${escapeHtml(a.transaction_id.slice(0, 8))}...</span>
         </div>
-        <div style="font-size: 0.8rem; color: var(--text-muted);">Score: <strong>${a.risk_score}</strong></div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">Score: <strong>${escapeHtml(String(a.risk_score))}</strong></div>
       </div>
     `).join("");
   } catch {
@@ -266,10 +269,10 @@ async function renderOverviewInvestigations() {
     container.innerHTML = invs.map(i => `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.5rem; border-bottom: 1px solid var(--border-subtle);">
         <div>
-          <span class="badge badge-${i.priority.toLowerCase()}">${i.priority}</span>
-          <span style="font-size: 0.82rem; margin-left: 0.5rem;">${i.title}</span>
+          <span class="badge badge-${escapeHtml(i.priority.toLowerCase())}">${escapeHtml(i.priority)}</span>
+          <span style="font-size: 0.82rem; margin-left: 0.5rem;">${escapeHtml(i.title)}</span>
         </div>
-        <span class="badge" style="background: var(--bg-tertiary);">${i.status}</span>
+        <span class="badge" style="background: var(--bg-tertiary);">${escapeHtml(i.status)}</span>
       </div>
     `).join("");
   } catch {
@@ -302,27 +305,27 @@ async function loadTransactions() {
 
     tbody.innerHTML = items.map(tx => {
       const riskBadge = tx.risk_level
-        ? `<span class="badge badge-${tx.risk_level}">${tx.risk_level}</span>`
+        ? `<span class="badge badge-${escapeHtml(tx.risk_level)}">${escapeHtml(tx.risk_level)}</span>`
         : '<span class="badge" style="background: var(--bg-tertiary);">Pending</span>';
-      const score = tx.risk_score !== null ? tx.risk_score : "-";
+      const score = tx.risk_score !== null ? escapeHtml(String(tx.risk_score)) : "-";
       const timeStr = new Date(tx.occurred_at).toLocaleTimeString();
 
       return `
-        <tr onclick="inspectTransaction('${tx.id}')">
-          <td style="color: var(--text-muted); font-size: 0.78rem;">${timeStr}</td>
-          <td style="font-family: monospace; font-size: 0.78rem;">${tx.id.slice(0, 8)}...</td>
-          <td style="font-weight: 500;">${tx.sender_account_id}</td>
-          <td style="font-weight: 500;">${tx.receiver_account_id}</td>
+        <tr onclick="inspectTransaction('${escapeHtml(tx.id)}')">
+          <td style="color: var(--text-muted); font-size: 0.78rem;">${escapeHtml(timeStr)}</td>
+          <td style="font-family: monospace; font-size: 0.78rem;">${escapeHtml(tx.id.slice(0, 8))}...</td>
+          <td style="font-weight: 500;">${escapeHtml(tx.sender_account_id)}</td>
+          <td style="font-weight: 500;">${escapeHtml(tx.receiver_account_id)}</td>
           <td style="font-weight: 600;">$${parseFloat(tx.amount).toFixed(2)}</td>
-          <td><span class="badge" style="background: var(--bg-tertiary);">${tx.status}</span></td>
+          <td><span class="badge" style="background: var(--bg-tertiary);">${escapeHtml(tx.status)}</span></td>
           <td style="font-weight: 700;">${score}</td>
           <td>${riskBadge}</td>
-          <td><button class="btn" style="padding: 0.2rem 0.5rem;" onclick="event.stopPropagation(); inspectTransaction('${tx.id}')">Inspect</button></td>
+          <td><button class="btn" style="padding: 0.2rem 0.5rem;" onclick="event.stopPropagation(); inspectTransaction('${escapeHtml(tx.id)}')">Inspect</button></td>
         </tr>
       `;
     }).join("");
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty-state" style="color: var(--accent-rose);">${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state" style="color: var(--accent-rose);">${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -344,11 +347,11 @@ async function inspectTransaction(txId) {
       reasonsHtml = risk[0].reasons.map(r => `
         <div class="rule-pill ${r.triggered ? 'triggered' : ''}">
           <div style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 0.25rem;">
-            <span>${r.rule_name} [${r.reason_code}]</span>
-            <span style="color: var(--accent-rose);">+${r.score_contribution} pts</span>
+            <span>${escapeHtml(r.rule_name)} [${escapeHtml(r.reason_code)}]</span>
+            <span style="color: var(--accent-rose);">+${escapeHtml(String(r.score_contribution))} pts</span>
           </div>
-          <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.35rem;">${r.description}</div>
-          <pre style="font-size: 0.7rem; background: var(--bg-primary); padding: 0.4rem; border-radius: 4px; overflow-x: auto;">${JSON.stringify(r.evidence, null, 2)}</pre>
+          <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.35rem;">${escapeHtml(r.description)}</div>
+          <pre style="font-size: 0.7rem; background: var(--bg-primary); padding: 0.4rem; border-radius: 4px; overflow-x: auto;">${escapeHtml(JSON.stringify(r.evidence, null, 2))}</pre>
         </div>
       `).join("");
     }
@@ -357,12 +360,12 @@ async function inspectTransaction(txId) {
       <div class="detail-section">
         <h4>Transaction Core Information</h4>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.82rem;">
-          <div><span style="color: var(--text-muted);">ID:</span> ${tx.id}</div>
-          <div><span style="color: var(--text-muted);">Amount:</span> $${parseFloat(tx.amount).toFixed(2)} ${tx.currency}</div>
-          <div><span style="color: var(--text-muted);">Sender:</span> <strong>${tx.sender_account_id}</strong></div>
-          <div><span style="color: var(--text-muted);">Receiver:</span> <strong>${tx.receiver_account_id}</strong></div>
-          <div><span style="color: var(--text-muted);">Occurred:</span> ${new Date(tx.occurred_at).toLocaleString()}</div>
-          <div><span style="color: var(--text-muted);">Status:</span> ${tx.status}</div>
+          <div><span style="color: var(--text-muted);">ID:</span> ${escapeHtml(tx.id)}</div>
+          <div><span style="color: var(--text-muted);">Amount:</span> $${parseFloat(tx.amount).toFixed(2)} ${escapeHtml(tx.currency)}</div>
+          <div><span style="color: var(--text-muted);">Sender:</span> <strong>${escapeHtml(tx.sender_account_id)}</strong></div>
+          <div><span style="color: var(--text-muted);">Receiver:</span> <strong>${escapeHtml(tx.receiver_account_id)}</strong></div>
+          <div><span style="color: var(--text-muted);">Occurred:</span> ${escapeHtml(new Date(tx.occurred_at).toLocaleString())}</div>
+          <div><span style="color: var(--text-muted);">Status:</span> ${escapeHtml(tx.status)}</div>
         </div>
       </div>
 
@@ -370,12 +373,12 @@ async function inspectTransaction(txId) {
         <h4>Risk Assessment Engine</h4>
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: ${score >= 70 ? 'var(--accent-rose)' : (score >= 30 ? 'var(--accent-amber)' : 'var(--accent-emerald)')};">${score} / 100</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: ${score >= 70 ? 'var(--accent-rose)' : (score >= 30 ? 'var(--accent-amber)' : 'var(--accent-emerald)')};">${escapeHtml(String(score))} / 100</div>
             <div style="font-size: 0.78rem; color: var(--text-muted);">Hybrid Score (60% Rules + 40% ML)</div>
           </div>
-          <span class="badge badge-${riskLevel}" style="font-size: 0.85rem; padding: 0.35rem 0.8rem;">${riskLevel}</span>
+          <span class="badge badge-${escapeHtml(riskLevel)}" style="font-size: 0.85rem; padding: 0.35rem 0.8rem;">${escapeHtml(riskLevel)}</span>
         </div>
-        <button class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="rescoreTransaction('${tx.id}')">Trigger On-Demand Rescore</button>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="rescoreTransaction('${escapeHtml(tx.id)}')">Trigger On-Demand Rescore</button>
       </div>
 
       <div class="detail-section">
@@ -384,7 +387,7 @@ async function inspectTransaction(txId) {
       </div>
     `;
   } catch (err) {
-    content.innerHTML = `<div class="empty-state" style="color: var(--accent-rose);">${err.message}</div>`;
+    content.innerHTML = `<div class="empty-state" style="color: var(--accent-rose);">${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -423,25 +426,25 @@ async function loadAlerts() {
       const reasons = a.reason_codes ? a.reason_codes.join(", ") : "-";
       return `
         <tr>
-          <td><span class="badge badge-${a.severity.toLowerCase()}">${a.severity}</span></td>
-          <td style="font-family: monospace; font-size: 0.78rem;">${a.id.slice(0, 8)}...</td>
-          <td style="font-family: monospace; font-size: 0.78rem;">${a.transaction_id.slice(0, 8)}...</td>
-          <td style="font-weight: 700;">${a.risk_score}</td>
-          <td style="font-size: 0.78rem; color: var(--text-secondary);">${reasons}</td>
-          <td><span class="badge" style="background: var(--bg-tertiary);">${a.status}</span></td>
-          <td style="color: var(--text-muted); font-size: 0.78rem;">${new Date(a.created_at).toLocaleTimeString()}</td>
+          <td><span class="badge badge-${escapeHtml(a.severity.toLowerCase())}">${escapeHtml(a.severity)}</span></td>
+          <td style="font-family: monospace; font-size: 0.78rem;">${escapeHtml(a.id.slice(0, 8))}...</td>
+          <td style="font-family: monospace; font-size: 0.78rem;">${escapeHtml(a.transaction_id.slice(0, 8))}...</td>
+          <td style="font-weight: 700;">${escapeHtml(String(a.risk_score))}</td>
+          <td style="font-size: 0.78rem; color: var(--text-secondary);">${escapeHtml(reasons)}</td>
+          <td><span class="badge" style="background: var(--bg-tertiary);">${escapeHtml(a.status)}</span></td>
+          <td style="color: var(--text-muted); font-size: 0.78rem;">${escapeHtml(new Date(a.created_at).toLocaleTimeString())}</td>
           <td>
             <div style="display: flex; gap: 0.35rem;">
-              ${a.status === 'open' ? `<button class="btn" style="padding: 0.2rem 0.5rem;" onclick="acknowledgeAlert('${a.id}')">Acknowledge</button>` : ''}
-              ${a.status !== 'resolved' && a.status !== 'dismissed' ? `<button class="btn btn-primary" style="padding: 0.2rem 0.5rem;" onclick="openCreateInvModalForAlert('${a.id}')">Investigate</button>` : ''}
-              ${a.status !== 'resolved' && a.status !== 'dismissed' ? `<button class="btn btn-danger" style="padding: 0.2rem 0.5rem;" onclick="dismissAlertPrompt('${a.id}')">Dismiss</button>` : ''}
+              ${a.status === 'open' ? `<button class="btn" style="padding: 0.2rem 0.5rem;" onclick="acknowledgeAlert('${escapeHtml(a.id)}')">Acknowledge</button>` : ''}
+              ${a.status !== 'resolved' && a.status !== 'dismissed' ? `<button class="btn btn-primary" style="padding: 0.2rem 0.5rem;" onclick="openCreateInvModalForAlert('${escapeHtml(a.id)}')">Investigate</button>` : ''}
+              ${a.status !== 'resolved' && a.status !== 'dismissed' ? `<button class="btn btn-danger" style="padding: 0.2rem 0.5rem;" onclick="dismissAlertPrompt('${escapeHtml(a.id)}')">Dismiss</button>` : ''}
             </div>
           </td>
         </tr>
       `;
     }).join("");
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty-state" style="color: var(--accent-rose);">${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state" style="color: var(--accent-rose);">${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -491,18 +494,18 @@ async function loadInvestigations() {
     }
 
     tbody.innerHTML = items.map(inv => `
-      <tr onclick="inspectInvestigation('${inv.id}')">
-        <td><span class="badge badge-${inv.priority.toLowerCase()}">${inv.priority}</span></td>
-        <td style="font-weight: 600;">${inv.title}</td>
-        <td><span class="badge" style="background: var(--bg-tertiary);">${inv.status}</span></td>
+      <tr onclick="inspectInvestigation('${escapeHtml(inv.id)}')">
+        <td><span class="badge badge-${escapeHtml(inv.priority.toLowerCase())}">${escapeHtml(inv.priority)}</span></td>
+        <td style="font-weight: 600;">${escapeHtml(inv.title)}</td>
+        <td><span class="badge" style="background: var(--bg-tertiary);">${escapeHtml(inv.status)}</span></td>
         <td style="font-size: 0.8rem; color: var(--text-secondary);">${inv.assigned_to_id ? 'Assigned' : 'Unassigned'}</td>
         <td style="font-weight: 500;">${inv.alert_count || 1}</td>
-        <td style="color: var(--text-muted); font-size: 0.78rem;">${new Date(inv.created_at).toLocaleDateString()}</td>
-        <td><button class="btn" style="padding: 0.2rem 0.5rem;" onclick="event.stopPropagation(); inspectInvestigation('${inv.id}')">View Case</button></td>
+        <td style="color: var(--text-muted); font-size: 0.78rem;">${escapeHtml(new Date(inv.created_at).toLocaleDateString())}</td>
+        <td><button class="btn" style="padding: 0.2rem 0.5rem;" onclick="event.stopPropagation(); inspectInvestigation('${escapeHtml(inv.id)}')">View Case</button></td>
       </tr>
     `).join("");
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color: var(--accent-rose);">${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color: var(--accent-rose);">${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -517,8 +520,8 @@ async function inspectInvestigation(invId) {
     const notesHtml = (inv.notes && inv.notes.length > 0)
       ? inv.notes.map(n => `
           <div style="background: var(--bg-tertiary); padding: 0.6rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.8rem;">
-            <div style="color: var(--text-muted); font-size: 0.72rem; margin-bottom: 0.2rem;">${new Date(n.created_at).toLocaleString()}</div>
-            <div>${n.body}</div>
+            <div style="color: var(--text-muted); font-size: 0.72rem; margin-bottom: 0.2rem;">${escapeHtml(new Date(n.created_at).toLocaleString())}</div>
+            <div>${escapeHtml(n.body)}</div>
           </div>
         `).join("")
       : '<div style="color: var(--text-muted); font-size: 0.8rem;">No notes recorded yet.</div>';
@@ -526,8 +529,8 @@ async function inspectInvestigation(invId) {
     const evidenceHtml = (inv.evidence && inv.evidence.length > 0)
       ? inv.evidence.map(e => `
           <div style="background: var(--bg-tertiary); padding: 0.6rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.8rem;">
-            <div style="font-weight: 600; color: var(--accent-cyan);">${e.evidence_type}</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">${e.description || ''}</div>
+            <div style="font-weight: 600; color: var(--accent-cyan);">${escapeHtml(e.evidence_type)}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(e.description || '')}</div>
           </div>
         `).join("")
       : '<div style="color: var(--text-muted); font-size: 0.8rem;">No evidence attached yet.</div>';
@@ -535,18 +538,18 @@ async function inspectInvestigation(invId) {
     content.innerHTML = `
       <div class="detail-section">
         <h4>Case Overview</h4>
-        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">${inv.title}</h3>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">${inv.description || 'No description provided.'}</p>
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">${escapeHtml(inv.title)}</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">${escapeHtml(inv.description || 'No description provided.')}</p>
         <div style="display: flex; gap: 0.5rem;">
-          <span class="badge badge-${inv.priority.toLowerCase()}">${inv.priority}</span>
-          <span class="badge" style="background: var(--bg-tertiary);">${inv.status}</span>
+          <span class="badge badge-${escapeHtml(inv.priority.toLowerCase())}">${escapeHtml(inv.priority)}</span>
+          <span class="badge" style="background: var(--bg-tertiary);">${escapeHtml(inv.status)}</span>
         </div>
       </div>
 
       <div class="detail-section">
         <h4>Add Investigation Note</h4>
         <textarea id="drawer-note-input" rows="2" style="width: 100%; margin-bottom: 0.5rem;" class="form-group input" placeholder="Enter findings, customer outreach notes..."></textarea>
-        <button class="btn btn-primary" onclick="submitInvestigationNote('${inv.id}')">Post Note</button>
+        <button class="btn btn-primary" onclick="submitInvestigationNote('${escapeHtml(inv.id)}')">Post Note</button>
       </div>
 
       <div class="detail-section">
@@ -563,15 +566,15 @@ async function inspectInvestigation(invId) {
         <div class="detail-section">
           <h4>Close Case Outcome</h4>
           <div style="display: flex; gap: 0.5rem;">
-            <button class="btn btn-danger" onclick="closeCaseOutcome('${inv.id}', 'fraud_confirmed')">Confirm Fraud</button>
-            <button class="btn" onclick="closeCaseOutcome('${inv.id}', 'false_positive')">False Positive</button>
-            <button class="btn" onclick="closeCaseOutcome('${inv.id}', 'inconclusive')">Inconclusive</button>
+            <button class="btn btn-danger" onclick="closeCaseOutcome('${escapeHtml(inv.id)}', 'fraud_confirmed')">Confirm Fraud</button>
+            <button class="btn" onclick="closeCaseOutcome('${escapeHtml(inv.id)}', 'false_positive')">False Positive</button>
+            <button class="btn" onclick="closeCaseOutcome('${escapeHtml(inv.id)}', 'inconclusive')">Inconclusive</button>
           </div>
         </div>
       ` : ''}
     `;
   } catch (err) {
-    content.innerHTML = `<div class="empty-state" style="color: var(--accent-rose);">${err.message}</div>`;
+    content.innerHTML = `<div class="empty-state" style="color: var(--accent-rose);">${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -814,7 +817,7 @@ function initCanvasGraph() {
 }
 
 async function inspectAccountNetwork(accountId) {
-  openDrawer(`Account Network Risk: ${accountId}`);
+  openDrawer(`Account Network Risk: ${escapeHtml(accountId)}`);
   const content = document.getElementById("drawer-content");
   content.innerHTML = '<div class="empty-state">Loading account network metrics...</div>';
 
@@ -824,29 +827,29 @@ async function inspectAccountNetwork(accountId) {
       <div class="detail-section">
         <h4>Topological Role & Classification</h4>
         <div style="margin-bottom: 0.5rem;">
-          <span class="badge ${net.is_mule_suspect ? 'badge-critical' : 'badge-low'}">${net.risk_flag}</span>
+          <span class="badge ${net.is_mule_suspect ? 'badge-critical' : 'badge-low'}">${escapeHtml(net.risk_flag)}</span>
         </div>
-        <p style="font-size: 0.85rem; color: var(--accent-rose);">${net.risk_reasons || 'No topological risk detected.'}</p>
+        <p style="font-size: 0.85rem; color: var(--accent-rose);">${escapeHtml(net.risk_reasons || 'No topological risk detected.')}</p>
       </div>
 
       <div class="detail-section">
         <h4>Graph Metrics</h4>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.82rem;">
-          <div><span style="color: var(--text-muted);">In-Degree:</span> <strong>${net.in_degree}</strong> senders</div>
-          <div><span style="color: var(--text-muted);">Out-Degree:</span> <strong>${net.out_degree}</strong> receivers</div>
+          <div><span style="color: var(--text-muted);">In-Degree:</span> <strong>${escapeHtml(String(net.in_degree))}</strong> senders</div>
+          <div><span style="color: var(--text-muted);">Out-Degree:</span> <strong>${escapeHtml(String(net.out_degree))}</strong> receivers</div>
           <div><span style="color: var(--text-muted);">Volume In:</span> $${parseFloat(net.total_volume_in).toFixed(2)}</div>
           <div><span style="color: var(--text-muted);">Volume Out:</span> $${parseFloat(net.total_volume_out).toFixed(2)}</div>
           <div><span style="color: var(--text-muted);">PageRank:</span> ${net.centrality_score.toFixed(4)}</div>
-          <div><span style="color: var(--text-muted);">Cycle Length:</span> ${net.cycle_length || 'None'}</div>
+          <div><span style="color: var(--text-muted);">Cycle Length:</span> ${escapeHtml(String(net.cycle_length || 'None'))}</div>
         </div>
       </div>
 
       <div class="detail-section">
-        <button class="btn btn-primary" style="width: 100%;" onclick="focusAccountInTransactions('${accountId}')">View Account Transactions</button>
+        <button class="btn btn-primary" style="width: 100%;" onclick="focusAccountInTransactions('${escapeHtml(accountId)}')">View Account Transactions</button>
       </div>
     `;
   } catch (err) {
-    content.innerHTML = `<div class="empty-state" style="color: var(--accent-rose);">${err.message}</div>`;
+    content.innerHTML = `<div class="empty-state" style="color: var(--accent-rose);">${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -978,4 +981,14 @@ document.addEventListener("DOMContentLoaded", () => {
     loadNetworkGraph();
   });
   document.getElementById("btn-recalc-network").addEventListener("click", triggerNetworkRecalculate);
+
+  // Global Keyboard Navigation: Close Modals and Drawer on Escape
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeDrawer();
+      closeModal();
+      closeLoginModal();
+      closeCreateInvModal();
+    }
+  });
 });
