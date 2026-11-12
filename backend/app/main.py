@@ -14,6 +14,7 @@ from app.core.middleware import (
     RequestIDMiddleware,
     SecurityHeadersMiddleware,
 )
+from app.core import kafka as kafka_core
 from app.core import redis as redis_core
 from app.database.connection import engine
 
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
     validate_jwt_secret(settings)
     yield
     redis_core.close_redis_connection()
+    kafka_core.close_kafka_producer()
 
 
 app = FastAPI(
@@ -116,3 +118,21 @@ def redis_health():
             "details": details,
         },
     )
+
+
+@app.get("/health/streaming")
+def streaming_health():
+    status_str, details = kafka_core.check_kafka_health()
+    status_code = (
+        status.HTTP_200_OK
+        if status_str in ("ok", "disabled")
+        else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "streaming": status_str,
+            "details": details,
+        },
+    )
+

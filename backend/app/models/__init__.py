@@ -16,6 +16,10 @@ from app.models.investigation import (
     InvestigationStatus,
     investigation_alerts,
 )
+from app.models.outbox import (
+    OutboxEvent,
+    OutboxStatus,
+)
 from app.models.transaction import (
     RiskLevel,
     Transaction,
@@ -50,4 +54,6 @@ __all__ = [
     "InvestigationNote",
     "InvestigationEvidence",
     "investigation_alerts",
+    "OutboxEvent",
+    "OutboxStatus",
 ]

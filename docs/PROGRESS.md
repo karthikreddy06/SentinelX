@@ -22,12 +22,12 @@ SentinelX is a real-time financial fraud detection & intelligence platform. This
 
 ## Part B Milestones
 
-| Milestone | Title | Branch | Status |
-|---|---|---|---|
-| **M9** | Streaming Ingestion (Redpanda/Kafka) | `phase-9-streaming` | **todo** |
-| **M10** | Async Worker Pipeline (Celery) | `phase-10-celery` | **todo** |
-| **M11** | External Threat Feeds & Watchlists | `phase-11-network` | **todo** |
-| **M12** | Analytics & Real-Time Reporting Dashboard | `phase-12-analytics` | **todo** |
-| **M13** | Vanilla Frontend UI (No Frameworks) | `phase-13-frontend` | **todo** |
-| **M14** | Production Hardening & Full Docker Compose | `phase-14-docker` | **todo** |
-| **M15** | End-to-End Simulation & Verification | `phase-15-release` | **todo** |
+| Milestone | Title | Branch | Status | Evidence & Test Counts |
+|---|---|---|---|---|
+| **M9** | Streaming Ingestion (Redpanda/Kafka) | `phase-9-streaming` | **done** | 77 passed/skipped tests (75 passed, 2 skipped, 0 failed), Transactional Outbox pattern (`outbox_events` table with uuidv7, migration `ac5891d9c3f5`), atomic outbox recording on transaction creation, outbox publisher with `SKIP LOCKED` concurrency and DLQ escalation, stream consumer (`transactions.created` -> scoring -> `transactions.scored` / `alerts.created`), `/health/streaming` endpoint with broker fallback, Redpanda 24.2.14 in `docker-compose.yml`, standalone publisher & consumer runners |
+| **M10** | Async Worker Pipeline (Celery) | `phase-10-celery` | **todo** | Pending |
+| **M11** | External Threat Feeds & Watchlists | `phase-11-network` | **todo** | Pending |
+| **M12** | Analytics & Real-Time Reporting Dashboard | `phase-12-analytics` | **todo** | Pending |
+| **M13** | Vanilla Frontend UI (No Frameworks) | `phase-13-frontend` | **todo** | Pending |
+| **M14** | Production Hardening & Full Docker Compose | `phase-14-docker` | **todo** | Pending |
+| **M15** | End-to-End Simulation & Verification | `phase-15-release` | **todo** | Pending |
