@@ -153,3 +153,26 @@ def check_model_drift_task() -> dict[str, Any]:
         return summary
     finally:
         db.close()
+
+
+@celery_app.task(name="app.tasks.maintenance_tasks.recalculate_network_graph_task")
+def recalculate_network_graph_task(lookback_days: int = 30) -> dict[str, Any]:
+    """
+    Periodic graph computation task: builds transaction topology, detects mule cycles
+    and high-centrality hubs, and updates account_network_risk table.
+    """
+    logger.info("Executing periodic network graph topology recalculation...")
+    from app.services.network_service import recalculate_network_risk
+
+    db = SessionLocal()
+    try:
+        res = recalculate_network_risk(db, lookback_days=lookback_days)
+        return {
+            "status": "completed",
+            "accounts_analyzed": res.accounts_analyzed,
+            "mule_suspects_detected": res.mule_suspects_detected,
+            "cycles_detected": res.cycles_detected,
+            "hubs_detected": res.hubs_detected,
+        }
+    finally:
+        db.close()

@@ -43,6 +43,10 @@ celery_app.conf.update(
             "task": "app.tasks.maintenance_tasks.check_model_drift_task",
             "schedule": 86400.0,  # every 24 hours
         },
+        "recalculate-network-graph-6h": {
+            "task": "app.tasks.maintenance_tasks.recalculate_network_graph_task",
+            "schedule": 21600.0,  # every 6 hours
+        },
     },
 )
 

@@ -16,6 +16,10 @@ from app.models.investigation import (
     InvestigationStatus,
     investigation_alerts,
 )
+from app.models.network import (
+    AccountNetworkRisk,
+    NetworkRiskFlag,
+)
 from app.models.outbox import (
     OutboxEvent,
     OutboxStatus,
@@ -56,4 +60,6 @@ __all__ = [
     "investigation_alerts",
     "OutboxEvent",
     "OutboxStatus",
+    "AccountNetworkRisk",
+    "NetworkRiskFlag",
 ]

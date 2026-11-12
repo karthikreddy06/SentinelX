@@ -316,6 +316,48 @@ class BurstFailuresRule(BaseRule):
         )
 
 
+class NetworkRiskRule(BaseRule):
+    name = "network_risk"
+    reason_code = "NETWORK_MULE_RING"
+    description = "Transaction involves an account flagged in a money mule cycle or high-risk topology."
+
+    def evaluate(
+        self, transaction: Transaction, features: dict[str, Any], config: dict[str, Any]
+    ) -> RuleResult:
+        mule_detected = features.get("network_mule_detected", False)
+        hub_detected = features.get("network_hub_detected", False)
+        triggered = mule_detected or hub_detected
+
+        weight = config["weights"].get("network_risk", 35)
+        if mule_detected:
+            score = weight
+            reason = "NETWORK_MULE_RING"
+            desc = "Transaction involves an account identified in a money laundering mule ring or cycle."
+        elif hub_detected:
+            score = min(20, weight)
+            reason = "NETWORK_SUSPICIOUS_HUB"
+            desc = "Transaction involves an account with suspicious fan-in aggregator or distributor topology."
+        else:
+            score = 0
+            reason = "NETWORK_RISK_CLEAN"
+            desc = "No network-level topological risk detected."
+
+        return RuleResult(
+            rule_name=self.name,
+            reason_code=reason,
+            triggered=triggered,
+            weight=weight,
+            score_contribution=score if triggered else 0,
+            description=desc,
+            evidence={
+                "network_mule_detected": mule_detected,
+                "network_hub_detected": hub_detected,
+                "sender_network_flag": features.get("sender_network_flag"),
+                "receiver_network_flag": features.get("receiver_network_flag"),
+            },
+        )
+
+
 ALL_RULES: list[BaseRule] = [
     VelocityBurstRule(),
     AmountAnomalyRule(),
@@ -327,4 +369,5 @@ ALL_RULES: list[BaseRule] = [
     RoundNumberRule(),
     PassThroughRule(),
     BurstFailuresRule(),
+    NetworkRiskRule(),
 ]

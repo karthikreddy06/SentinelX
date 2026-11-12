@@ -19,9 +19,10 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 from app.core.rate_limiter import rate_limiter
 from app.core.security import create_access_token, hash_password
+from app.database import connection as db_connection
 from app.database.connection import get_db
 from app.fraud.cache import clear_all_fraud_cache
-from app.main import app
+from app.main import app as fastapi_app
 from app.models.user import User, UserRole
 
 
@@ -41,8 +42,7 @@ TestingSessionLocal = sessionmaker(
 )
 
 # Ensure background tasks and services use the isolated test database
-import app.database.connection
-app.database.connection.SessionLocal = TestingSessionLocal
+db_connection.SessionLocal = TestingSessionLocal
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -63,7 +63,7 @@ def clean_database():
     with test_engine.connect() as conn:
         conn.execute(
             text(
-                "TRUNCATE TABLE outbox_events, investigation_notes, investigation_evidence, investigation_alerts, investigations, alert_events, alerts, fraud_scores, audit_logs, refresh_tokens, users, transactions RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE account_network_risk, outbox_events, investigation_notes, investigation_evidence, investigation_alerts, investigations, alert_events, alerts, fraud_scores, audit_logs, refresh_tokens, users, transactions RESTART IDENTITY CASCADE"
             )
         )
         conn.commit()
@@ -73,7 +73,7 @@ def clean_database():
     with test_engine.connect() as conn:
         conn.execute(
             text(
-                "TRUNCATE TABLE outbox_events, investigation_notes, investigation_evidence, investigation_alerts, investigations, alert_events, alerts, fraud_scores, audit_logs, refresh_tokens, users, transactions RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE account_network_risk, outbox_events, investigation_notes, investigation_evidence, investigation_alerts, investigations, alert_events, alerts, fraud_scores, audit_logs, refresh_tokens, users, transactions RESTART IDENTITY CASCADE"
             )
         )
         conn.commit()
@@ -100,10 +100,10 @@ def client(db_session):
         finally:
             session.close()
 
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
+    fastapi_app.dependency_overrides[get_db] = override_get_db
+    with TestClient(fastapi_app) as test_client:
         yield test_client
-    app.dependency_overrides.clear()
+    fastapi_app.dependency_overrides.clear()
 
 
 @pytest.fixture
