@@ -40,6 +40,10 @@ TestingSessionLocal = sessionmaker(
     bind=test_engine,
 )
 
+# Ensure background tasks and services use the isolated test database
+import app.database.connection
+app.database.connection.SessionLocal = TestingSessionLocal
+
 
 @pytest.fixture(scope="session", autouse=True)
 def apply_migrations():

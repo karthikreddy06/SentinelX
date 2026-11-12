@@ -79,9 +79,10 @@ def handle_transaction_created_event(
         alert_payload = {
             "alert_id": str(alert.id),
             "transaction_id": str(tx_id),
-            "title": alert.title,
             "severity": alert.severity.value,
             "status": alert.status.value,
+            "reason_codes": alert.reason_codes,
+            "risk_score": alert.risk_score,
             "created_at": alert.created_at.isoformat(),
         }
         if direct_emit:
