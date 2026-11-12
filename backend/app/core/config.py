@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     OUTBOX_MAX_RETRIES: int = 5
     OUTBOX_BATCH_SIZE: int = 50
 
+    # Celery Background Processing
+    CELERY_BROKER_URL: str = "redis://127.0.0.1:6379/1"
+    CELERY_RESULT_BACKEND: str = "redis://127.0.0.1:6379/2"
+    CELERY_STALE_ALERT_THRESHOLD_HOURS: int = 24
+    CELERY_OUTBOX_RETENTION_DAYS: int = 7
+
     # Initial Admin (CLI use)
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None
