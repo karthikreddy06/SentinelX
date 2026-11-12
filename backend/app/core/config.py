@@ -31,6 +31,18 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://127.0.0.1:6379/0"
     REDIS_ENABLED: bool = True
 
+    # Event Streaming & Redpanda / Kafka
+    STREAMING_ENABLED: bool = True
+    KAFKA_BOOTSTRAP_SERVERS: str = "127.0.0.1:9092"
+    KAFKA_CLIENT_ID: str = "sentinelx-core"
+    KAFKA_GROUP_ID: str = "sentinelx-fraud-workers"
+    KAFKA_TOPIC_TRANSACTIONS_CREATED: str = "transactions.created"
+    KAFKA_TOPIC_TRANSACTIONS_SCORED: str = "transactions.scored"
+    KAFKA_TOPIC_ALERTS_CREATED: str = "alerts.created"
+    KAFKA_TOPIC_TRANSACTIONS_DLQ: str = "transactions.dlq"
+    OUTBOX_MAX_RETRIES: int = 5
+    OUTBOX_BATCH_SIZE: int = 50
+
     # Initial Admin (CLI use)
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None

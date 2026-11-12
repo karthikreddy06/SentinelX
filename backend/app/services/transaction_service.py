@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.fraud.cache import invalidate_sender_profile
 from app.models.transaction import (
     RiskLevel,
@@ -17,6 +18,7 @@ from app.schemas.transaction import (
     TransactionCreate,
     TransactionUpdate,
 )
+from app.services.outbox_service import record_outbox_event
 
 
 class TransactionServiceError(Exception):
@@ -108,6 +110,27 @@ def create_transaction(
         risk_level=None,
     )
     db.add(transaction)
+    db.flush()
+
+    # Record transactional outbox event atomically
+    record_outbox_event(
+        db=db,
+        event_type="transactions.created",
+        topic=settings.KAFKA_TOPIC_TRANSACTIONS_CREATED,
+        payload={
+            "transaction_id": str(transaction.id),
+            "sender_account_id": transaction.sender_account_id,
+            "receiver_account_id": transaction.receiver_account_id,
+            "amount": float(transaction.amount),
+            "currency": transaction.currency,
+            "transaction_type": transaction.transaction_type.value,
+            "occurred_at": transaction.occurred_at.isoformat(),
+            "channel": transaction.channel,
+            "country_code": transaction.country_code,
+            "device_id": transaction.device_id,
+            "ip_address": transaction.ip_address,
+        },
+    )
 
     try:
         db.commit()
