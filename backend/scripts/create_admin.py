@@ -1,6 +1,5 @@
 import argparse
 import getpass
-import os
 from pathlib import Path
 import sys
 

@@ -1,9 +1,29 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sentinelx-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sentinelx
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sentinelx"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: sentinelx-redis
     ports:
       - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -18,7 +38,7 @@ services:
       - redpanda
       - start
       - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
-      - --advertise-kafka-addr internal://127.0.0.1:9092,external://127.0.0.1:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://127.0.0.1:19092
       - --pandaproxy-addr 0.0.0.0:8082
       - --advertise-pandaproxy-addr 127.0.0.1:8082
       - --schema-registry-addr 0.0.0.0:8081
@@ -32,10 +52,117 @@ services:
       - --check=false
     ports:
       - "127.0.0.1:9092:9092"
+      - "127.0.0.1:19092:19092"
       - "127.0.0.1:9644:9644"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
     healthcheck:
       test: ["CMD", "rpk", "cluster", "health"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinelx-api
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "backend"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/sentinelx
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_ENABLED=True
+      - STREAMING_ENABLED=True
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-sentinelx-production-sample-secret-key-32chars}
+      - DEBUG=True
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  outbox_publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinelx-outbox-publisher
+    command: ["python", "backend/scripts/run_outbox_publisher.py"]
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/sentinelx
+      - REDIS_URL=redis://redis:6379/0
+      - STREAMING_ENABLED=True
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  stream_consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinelx-stream-consumer
+    command: ["python", "backend/scripts/run_stream_consumer.py"]
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/sentinelx
+      - REDIS_URL=redis://redis:6379/0
+      - STREAMING_ENABLED=True
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinelx-celery-worker
+    command: ["celery", "-A", "app.celery_app", "worker", "-l", "info"]
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/sentinelx
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinelx-celery-beat
+    command: ["celery", "-A", "app.celery_app", "beat", "-l", "info"]
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/sentinelx
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      redis:
+        condition: service_healthy
+      celery_worker:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  redpanda_data:

@@ -1,7 +1,7 @@
 """create transactions table
 
 Revision ID: da3c82724f83
-Revises: 
+Revises: None
 Create Date: 2026-11-11 19:47:40.903704
 
 """
