@@ -29,5 +29,6 @@ DEFAULT_RULES_CONFIG: dict[str, Any] = {
         "round_number": 10,
         "pass_through": 25,
         "burst_failures": 20,
+        "network_risk": 35,
     },
 }

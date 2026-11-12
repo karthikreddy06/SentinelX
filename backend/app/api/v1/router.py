@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     auth,
     investigations,
     ml,
+    network,
     transactions,
     users,
 )
@@ -18,3 +19,4 @@ api_router.include_router(transactions.router, prefix="/transactions", tags=["tr
 api_router.include_router(ml.router, prefix="/ml", tags=["ml"])
 api_router.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
 api_router.include_router(investigations.router, prefix="/investigations", tags=["investigations"])
+api_router.include_router(network.router, prefix="/network", tags=["network"])

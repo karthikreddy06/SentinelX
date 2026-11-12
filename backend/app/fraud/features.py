@@ -12,6 +12,7 @@ from app.fraud.cache import (
     record_transaction_velocity,
     set_sender_profile,
 )
+from app.models.network import AccountNetworkRisk, NetworkRiskFlag
 from app.models.transaction import Transaction, TransactionStatus
 
 
@@ -257,6 +258,29 @@ def extract_point_in_time_features(
         float(t.amount) >= (current_amount * 0.75) for t in recent_inbound
     )
 
+    # 11. Account Network Risk Features
+    sender_net = db.execute(
+        select(AccountNetworkRisk).where(AccountNetworkRisk.account_id == sender_id)
+    ).scalar_one_or_none()
+    receiver_net = db.execute(
+        select(AccountNetworkRisk).where(
+            AccountNetworkRisk.account_id == transaction.receiver_account_id
+        )
+    ).scalar_one_or_none()
+
+    sender_is_mule = sender_net.is_mule_suspect if sender_net else False
+    receiver_is_mule = receiver_net.is_mule_suspect if receiver_net else False
+    network_mule_detected = sender_is_mule or receiver_is_mule
+
+    hub_flags = {
+        NetworkRiskFlag.FAN_IN_AGGREGATOR,
+        NetworkRiskFlag.FAN_OUT_DISTRIBUTOR,
+        NetworkRiskFlag.HIGH_CENTRALITY_HUB,
+    }
+    sender_hub = (sender_net.risk_flag in hub_flags) if sender_net else False
+    receiver_hub = (receiver_net.risk_flag in hub_flags) if receiver_net else False
+    network_hub_detected = sender_hub or receiver_hub
+
     return {
         "current_amount": current_amount,
         "total_history_count": total_history_count,
@@ -284,4 +308,8 @@ def extract_point_in_time_features(
         "is_round_number": is_round_number,
         "recent_failures_1h": recent_failures,
         "pass_through_detected": pass_through_detected,
+        "network_mule_detected": network_mule_detected,
+        "network_hub_detected": network_hub_detected,
+        "sender_network_flag": sender_net.risk_flag.value if sender_net else "normal",
+        "receiver_network_flag": receiver_net.risk_flag.value if receiver_net else "normal",
     }

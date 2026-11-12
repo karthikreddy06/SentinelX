@@ -4,6 +4,7 @@ from app.tasks.maintenance_tasks import (
     cleanup_expired_tokens_task,
     cleanup_published_outbox_task,
     escalate_stale_alerts_task,
+    recalculate_network_graph_task,
 )
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     "escalate_stale_alerts_task",
     "cleanup_expired_tokens_task",
     "cleanup_published_outbox_task",
+    "recalculate_network_graph_task",
 ]
 
