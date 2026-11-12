@@ -50,7 +50,9 @@ def retrain_model_endpoint(
 
     try:
         # Run reproducible training pipeline
-        metrics = train_models(num_accounts=120, days=10, seed=42)
+        import os
+        output_dir = os.environ.get("SENTINELX_ML_OUTPUT_DIR", "ml")
+        metrics = train_models(num_accounts=120, days=10, seed=42, output_dir=output_dir)
 
         # Check validation guardrail: candidate validation F1 must be within 0.15 of active model
         val_f1 = metrics["validation_metrics"].get("f1_score") or metrics["validation_metrics"].get("ml_f1_score", 0.0)

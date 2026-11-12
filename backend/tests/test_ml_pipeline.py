@@ -110,7 +110,9 @@ def test_get_model_info_endpoint(client, analyst_headers, investigator_headers):
     assert client.get("/api/v1/ml/model").status_code == 401
 
 
-def test_retrain_endpoint_rbac(client, admin_headers, investigator_headers):
+def test_retrain_endpoint_rbac(client, admin_headers, investigator_headers, tmp_path, monkeypatch):
+    # Ensure retraining writes to isolated temporary directory during testing
+    monkeypatch.setenv("SENTINELX_ML_OUTPUT_DIR", str(tmp_path))
     # Non-admin cannot retrain -> 403
     r_forbid = client.post("/api/v1/ml/retrain", headers=investigator_headers)
     assert r_forbid.status_code == 403

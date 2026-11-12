@@ -24,7 +24,7 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    return os.environ.get("TEST_DATABASE_URL") or settings.DATABASE_URL
+    return os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL") or settings.DATABASE_URL
 
 
 def run_migrations_offline() -> None:
