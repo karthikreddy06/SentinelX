@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SentinelX — Real-Time Fraud Detection & Intelligence</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo">SX</div>
+      <div class="brand-text">
+        <h1>SentinelX</h1>
+        <p>Real-Time Fraud Intelligence Engine</p>
+      </div>
+    </div>
+
+    <!-- Live System Indicators -->
+    <div class="system-status">
+      <div class="status-pill" id="pill-api" title="API Status">
+        <span class="dot online"></span> API
+      </div>
+      <div class="status-pill" id="pill-db" title="PostgreSQL 18 Connection">
+        <span class="dot online"></span> DB
+      </div>
+      <div class="status-pill" id="pill-redis" title="Redis Cache Status">
+        <span class="dot warning" id="dot-redis"></span> Redis
+      </div>
+      <div class="status-pill" id="pill-stream" title="Streaming Outbox / Kafka">
+        <span class="dot warning" id="dot-stream"></span> Stream
+      </div>
+    </div>
+
+    <!-- User Profile & Auth -->
+    <div class="user-profile">
+      <div id="auth-logged-in" style="display: none; align-items: center; gap: 0.75rem;">
+        <span id="user-email" style="font-size: 0.85rem; color: var(--text-secondary);">user@sentinelx.local</span>
+        <span id="user-role-badge" class="role-badge analyst">Analyst</span>
+        <button id="btn-logout" class="btn" style="padding: 0.35rem 0.65rem;">Logout</button>
+      </div>
+      <div id="auth-logged-out">
+        <button id="btn-open-login" class="btn btn-primary">Sign In</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="dashboard-nav">
+    <button class="nav-tab active" data-tab="tab-overview">Executive Overview</button>
+    <button class="nav-tab" data-tab="tab-transactions">Transactions</button>
+    <button class="nav-tab" data-tab="tab-alerts">Alerts Triage</button>
+    <button class="nav-tab" data-tab="tab-investigations">Investigations</button>
+    <button class="nav-tab" data-tab="tab-network">Fraud Network Graph</button>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="dashboard-content">
+
+    <!-- TAB 1: EXECUTIVE OVERVIEW -->
+    <section id="tab-overview" class="tab-panel active">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span>Total Volume</span>
+            <span style="color: var(--accent-blue);">24h</span>
+          </div>
+          <div class="kpi-value" id="kpi-volume">$0.00</div>
+          <div class="kpi-subtext" id="kpi-count">0 Transactions processed</div>
+          <svg class="sparkline-svg" viewBox="0 0 200 40">
+            <polyline fill="none" stroke="#3b82f6" stroke-width="2" points="0,35 30,28 60,32 90,15 120,22 150,12 180,18 200,8" />
+          </svg>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span>Fraud Incident Rate</span>
+            <span style="color: var(--accent-rose);">Score &ge; 70</span>
+          </div>
+          <div class="kpi-value" id="kpi-fraud-rate">0.0%</div>
+          <div class="kpi-subtext" id="kpi-fraud-count">0 Flagged high risk</div>
+          <svg class="sparkline-svg" viewBox="0 0 200 40">
+            <polyline fill="none" stroke="#ef4444" stroke-width="2" points="0,38 30,36 60,30 90,34 120,25 150,28 180,15 200,20" />
+          </svg>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span>Open Alerts</span>
+            <span style="color: var(--accent-amber);">Action Required</span>
+          </div>
+          <div class="kpi-value" id="kpi-open-alerts">0</div>
+          <div class="kpi-subtext" id="kpi-critical-alerts">0 Critical priority</div>
+          <svg class="sparkline-svg" viewBox="0 0 200 40">
+            <polyline fill="none" stroke="#f59e0b" stroke-width="2" points="0,20 40,25 80,15 120,30 160,10 200,18" />
+          </svg>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span>Mule Rings Detected</span>
+            <span style="color: var(--accent-purple);">Network Graph</span>
+          </div>
+          <div class="kpi-value" id="kpi-mule-rings">0</div>
+          <div class="kpi-subtext" id="kpi-hubs-count">0 Suspicious hubs</div>
+          <svg class="sparkline-svg" viewBox="0 0 200 40">
+            <polyline fill="none" stroke="#8b5cf6" stroke-width="2" points="0,35 40,30 80,20 120,15 160,25 200,10" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Quick Recent Feed Split -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+        <div class="table-container">
+          <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+            <h3 style="font-size: 0.95rem;">Recent High Risk Alerts</h3>
+            <button class="btn" onclick="switchTab('tab-alerts')">View All</button>
+          </div>
+          <div id="overview-recent-alerts" style="padding: 0.5rem;"></div>
+        </div>
+
+        <div class="table-container">
+          <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+            <h3 style="font-size: 0.95rem;">Active Investigations</h3>
+            <button class="btn" onclick="switchTab('tab-investigations')">View All</button>
+          </div>
+          <div id="overview-recent-investigations" style="padding: 0.5rem;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: TRANSACTIONS EXPLORER -->
+    <section id="tab-transactions" class="tab-panel">
+      <div class="controls-bar">
+        <div style="display: flex; gap: 0.75rem; flex: 1;">
+          <input type="text" id="tx-search-input" class="search-input" placeholder="Search by Account ID (e.g. ACC-101)..." style="min-width: 280px;">
+          <select id="tx-risk-filter" class="select-input">
+            <option value="">All Risk Levels</option>
+            <option value="low">Low Risk (&lt; 30)</option>
+            <option value="medium">Medium Risk (30 - 69)</option>
+            <option value="high">High Risk (&ge; 70)</option>
+          </select>
+          <select id="tx-status-filter" class="select-input">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+            <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div>
+          <button id="btn-refresh-tx" class="btn">Refresh</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Transaction ID</th>
+              <th>Sender</th>
+              <th>Receiver</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Risk Score</th>
+              <th>Risk Level</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="tx-table-body">
+            <tr><td colspan="9" class="empty-state">Loading transactions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 3: ALERTS TRIAGE BOARD -->
+    <section id="tab-alerts" class="tab-panel">
+      <div class="controls-bar">
+        <div style="display: flex; gap: 0.75rem;">
+          <select id="alert-status-filter" class="select-input">
+            <option value="">All Statuses</option>
+            <option value="open" selected>Open Only</option>
+            <option value="investigating">Investigating</option>
+            <option value="resolved">Resolved</option>
+            <option value="dismissed">Dismissed</option>
+          </select>
+          <select id="alert-severity-filter" class="select-input">
+            <option value="">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div>
+          <button id="btn-refresh-alerts" class="btn">Refresh Alerts</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Severity</th>
+              <th>Alert ID</th>
+              <th>Transaction ID</th>
+              <th>Risk Score</th>
+              <th>Trigger Reason Codes</th>
+              <th>Status</th>
+              <th>Created At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-table-body">
+            <tr><td colspan="8" class="empty-state">Loading alerts...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 4: INVESTIGATIONS CASE MANAGER -->
+    <section id="tab-investigations" class="tab-panel">
+      <div class="controls-bar">
+        <div style="display: flex; gap: 0.75rem;">
+          <select id="inv-status-filter" class="select-input">
+            <option value="">All Cases</option>
+            <option value="open">Open</option>
+            <option value="investigating" selected>Under Investigation</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+        <div>
+          <button id="btn-refresh-inv" class="btn">Refresh Cases</button>
+          <button id="btn-create-inv" class="btn btn-primary">+ New Investigation</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Priority</th>
+              <th>Case Title</th>
+              <th>Status</th>
+              <th>Assigned To</th>
+              <th>Linked Alerts</th>
+              <th>Created At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inv-table-body">
+            <tr><td colspan="7" class="empty-state">Loading investigations...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 5: FRAUD NETWORK GRAPH -->
+    <section id="tab-network" class="tab-panel">
+      <div class="controls-bar">
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <input type="text" id="graph-account-filter" class="search-input" placeholder="Focus Account (e.g. MULE-1)...">
+          <input type="number" id="graph-min-amount" class="search-input" placeholder="Min Amount ($)" value="0" style="width: 120px;">
+          <button id="btn-load-graph" class="btn btn-primary">Filter Graph</button>
+          <button id="btn-reset-graph" class="btn">Reset View</button>
+        </div>
+        <div>
+          <button id="btn-recalc-network" class="btn btn-danger">Recalculate Topology</button>
+        </div>
+      </div>
+
+      <div class="graph-container">
+        <canvas id="networkCanvas"></canvas>
+        <div class="graph-legend">
+          <div style="font-weight: 700; margin-bottom: 0.2rem;">Topology Legend</div>
+          <div class="legend-item"><span class="dot" style="background-color: #ef4444;"></span> Mule Ring / Cycle Suspect</div>
+          <div class="legend-item"><span class="dot" style="background-color: #f59e0b;"></span> Suspicious Hub (Fan-in/Fan-out)</div>
+          <div class="legend-item"><span class="dot" style="background-color: #10b981;"></span> Normal Account</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Scroll: Zoom | Drag: Pan | Click: Inspect Account</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Slide-Over Drawer for Transaction / Account Details -->
+  <div id="drawer-overlay" class="drawer-overlay"></div>
+  <aside id="detail-drawer" class="drawer">
+    <div class="drawer-header">
+      <h3 id="drawer-title" style="font-size: 1.05rem;">Transaction Inspection</h3>
+      <button id="drawer-close-btn" class="close-btn">&times;</button>
+    </div>
+    <div id="drawer-content" class="drawer-body">
+      <!-- Injected dynamically -->
+    </div>
+  </aside>
+
+  <!-- Login Modal -->
+  <div id="login-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem;">Sign in to SentinelX</h3>
+        <button id="btn-close-login" class="close-btn">&times;</button>
+      </div>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-email">Email Address</label>
+          <input type="email" id="login-email" value="admin@sentinelx.local" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" value="AdminSecret2026!" required>
+        </div>
+        <div id="login-error" style="color: var(--accent-rose); font-size: 0.8rem; margin-bottom: 0.8rem; display: none;"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Investigation Modal -->
+  <div id="inv-modal" class="modal-overlay">
+    <div class="modal-content" style="width: 500px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem;">New Investigation Case</h3>
+        <button id="btn-close-inv-modal" class="close-btn">&times;</button>
+      </div>
+      <form id="create-inv-form">
+        <div class="form-group">
+          <label for="inv-title">Case Title</label>
+          <input type="text" id="inv-title" placeholder="e.g. Velocity anomaly on account ACC-901" required>
+        </div>
+        <div class="form-group">
+          <label for="inv-description">Description</label>
+          <textarea id="inv-description" rows="3" placeholder="Case overview and suspected typology..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="inv-priority">Priority</label>
+          <select id="inv-priority" class="select-input" style="width: 100%;">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="inv-alert-ids">Link Alert ID (optional)</label>
+          <input type="text" id="inv-alert-ids" placeholder="e.g. 018e1234-...">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+          <button type="button" id="btn-cancel-inv" class="btn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Case</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
