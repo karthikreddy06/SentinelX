@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: sentinelx
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -94,6 +94,8 @@ services:
       dockerfile: Dockerfile
     container_name: sentinelx-outbox-publisher
     command: ["python", "backend/scripts/run_outbox_publisher.py"]
+    healthcheck:
+      disable: true
     environment:
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/sentinelx
       - REDIS_URL=redis://redis:6379/0
@@ -114,6 +116,8 @@ services:
       dockerfile: Dockerfile
     container_name: sentinelx-stream-consumer
     command: ["python", "backend/scripts/run_stream_consumer.py"]
+    healthcheck:
+      disable: true
     environment:
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/sentinelx
       - REDIS_URL=redis://redis:6379/0
@@ -132,6 +136,8 @@ services:
       dockerfile: Dockerfile
     container_name: sentinelx-celery-worker
     command: ["celery", "-A", "app.celery_app", "worker", "-l", "info"]
+    healthcheck:
+      disable: true
     environment:
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/sentinelx
       - REDIS_URL=redis://redis:6379/0
@@ -150,6 +156,8 @@ services:
       dockerfile: Dockerfile
     container_name: sentinelx-celery-beat
     command: ["celery", "-A", "app.celery_app", "beat", "-l", "info"]
+    healthcheck:
+      disable: true
     environment:
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/sentinelx
       - REDIS_URL=redis://redis:6379/0
