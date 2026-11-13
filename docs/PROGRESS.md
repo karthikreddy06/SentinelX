@@ -1,6 +1,6 @@
 # SentinelX Engineering Progress
 
-SentinelX is a real-time financial fraud detection & intelligence platform. This document tracks the implementation progress across all milestones M1 through M15.
+SentinelX is a real-time financial fraud detection & intelligence platform. This document tracks the implementation progress across all milestones M1 through M15 and post-release hardening passes.
 
 ---
 
@@ -20,7 +20,7 @@ SentinelX is a real-time financial fraud detection & intelligence platform. This
 
 ---
 
-## Part B Milestones
+## Part B Milestones (M9 to M15)
 
 | Milestone | Title | Branch | Status | Evidence & Test Counts |
 |---|---|---|---|---|
@@ -38,32 +38,26 @@ SentinelX is a real-time financial fraud detection & intelligence platform. This
 
 | Item | Title | Status | Real Evidence / Command Snippet |
 |---|---|---|---|
-| **V1** | Real Docker Stack Verification | **PROVED REAL** | Docker Desktop 29.6.2 Engine verified. `docker compose up -d` running all 8 containers healthy (`postgres`, `redis`, `redpanda`, `api`, `outbox_publisher`, `stream_consumer`, `celery_worker`, `celery_beat`). Full test suite (102 tests) executed inside container against isolated `sentinelx_test` DB: 102 passed, 0 skipped. Live health checks verified: `/health` (200), `/health/database` (200), `/health/redis` (200), `/health/streaming` (200). Live end-to-end admin login, normal transaction (score 18), suspicious transaction (score 84), and automatic alert generation verified. |
-| **V2** | Real Integration Tests | **PROVED REAL** | `backend/tests/test_integration_real.py` created with `@pytest.mark.integration`. Gracefully skips when services offline (`2 skipped in 3.84s`); deselects cleanly with `-m "not integration"`. |
+| **V1** | Real Docker Stack Verification | **PROVED REAL** | Docker Desktop 29.6.2 Engine verified. `docker compose up -d` running all 8 containers healthy. Full test suite (102 tests) executed inside container against isolated `sentinelx_test` DB: 102 passed, 0 skipped. Live health checks: `/health` (200), `/health/database` (200), `/health/redis` (200), `/health/streaming` (200). Live E2E admin login, normal transaction (score 18), suspicious transaction (score 84), alert auto-generation verified. |
+| **V2** | Real Integration Tests | **PROVED REAL** | `backend/tests/test_integration_real.py` with `@pytest.mark.integration`. Gracefully skips when services offline; deselects cleanly with `-m "not integration"`. |
 | **V3** | ML Honesty & Isolation | **PROVED REAL** | Model retraining isolated from tests (`SENTINELX_ML_OUTPUT_DIR`). Verified zero temporal leakage (`max(train) <= min(val) <= min(test)`). Metrics: Test P=0.5417, R=0.8667, F1=0.6667, ROC-AUC=0.9764. Disclaimers updated in `docs/MODEL_CARD.md`. |
-| **V4** | Migration Clean Run & Reversibility | **PROVED REAL** | Tested on empty DB `sentinelx_verify`: `alembic upgrade head` (14 tables created) -> `alembic check` ("No new upgrade operations detected. 100% in sync") -> `alembic downgrade base` (0 application tables) -> `alembic upgrade head` (14 tables recreated). Diff in migration 1 was strictly Ruff whitespace formatting. |
+| **V4** | Migration Clean Run & Reversibility | **PROVED REAL** | Tested on empty DB `sentinelx_verify`: `alembic upgrade head` (14 tables created) -> `alembic check` ("No new upgrade operations detected") -> `alembic downgrade base` (0 application tables) -> `alembic upgrade head` (14 tables recreated). |
 | **V5** | CI Pipeline & PostgreSQL 16 Compatibility | **PROVED REAL** | Added RFC 9562 `uuidv7()` polyfill and explicit `connection.commit()` in `backend/alembic/env.py`. Fixed pytest fixture execution order in `conftest.py`. GitHub Actions CI green. |
-| **V6** | Performance Benchmarking Correction | **PROVED REAL** | Cold PostgreSQL 18 direct latency: mean=68.02 ms, median=68.16 ms, p95=88.14 ms. Load test: 100 requests @ 8 concurrency: 10.33 TPS, p50=746.18 ms, p95=929.31 ms, 100% success (0 errors). Corrected 316ms claim in `docs/PERFORMANCE.md`. |
+| **V6** | Performance Benchmarking Correction | **PROVED REAL** | Cold PostgreSQL 18 direct latency: mean=68.02 ms, median=68.16 ms, p95=88.14 ms. Load test: 100 requests @ 8 concurrency: 10.33 TPS, p50=746.18 ms, p95=929.31 ms, 100% success (0 errors). |
 | **V7** | Frontend Security Hardening | **PROVED REAL** | Token storage in `sessionStorage` and `localStorage` completely removed; tokens live purely in memory state (`state.token = null`). All user/transaction text fields wrapped in `escapeHtml()`. `Content-Security-Policy` header enforced. 8/8 tests pass. |
 | **V8** | Dependency & Git Secret Scan | **PROVED REAL** | Upgraded legacy setuptools 65.5.0 -> 84.2.1. `python -m pip_audit`: "No known vulnerabilities found". Scanned git history across all commits: 0 real credentials, 0 private keys, 0 JWT tokens. Weak JWT rejected on `DEBUG=false`. `--password` CLI flag rejected. |
-| **V9** | Real Evidence & Documentation | **PROVED REAL** | Honest "Limitations & Disclaimers" added to `README.md`. Manual screenshot checklist documented below. Test suite: 98 passed, 2 skipped, 2 deselected, 85.69% coverage. |
+| **V9** | Real Evidence & Documentation | **PROVED REAL** | Honest "Limitations & Disclaimers" added to `README.md`. Release v1.0.1 tagged. |
 
 ---
 
-## V9 Frontend Manual Screenshot Checklist
+## Phase 17: PostgreSQL 18, Streaming Proof, Load Benchmarking & UI Release (`v1.0.2`)
 
-Since headless browser rendering via Docker/Playwright is unavailable in this environment without host browser binaries:
-
-1. **Executive Dashboard (`http://localhost:8000/`)**:
-   - Log in with `admin@sentinelx.local`
-   - Capture KPI overview metric cards (Total Ingested, High Risk Volume, Active Alerts, Open Cases) with SVG trend sparklines.
-2. **Transaction Explorer**:
-   - View paginated transactions list with color-coded risk badges (`LOW`, `MEDIUM`, `HIGH`).
-   - Click a transaction to open the slide-over inspection drawer; verify 11 deterministic rule contributions, ML anomaly score, and Network Mule indicators.
-3. **Alerts Triage Queue**:
-   - Verify alert cards grouped by severity (`CRITICAL`, `HIGH`, `MEDIUM`).
-   - Claim an alert (`ASSIGNED`) and verify status transition.
-4. **Investigation Workspace**:
-   - Open an active investigation case; capture audit timeline, notes history, and linked evidence items.
-5. **Interactive Network Graph**:
-   - Capture the HTML5 Canvas node-link topology showing circular mule rings (red nodes) and high fan-in hubs (amber nodes).
+| Item | Title | Status | Real Evidence / Command Snippet |
+|---|---|---|---|
+| **1** | PostgreSQL 18 Native UUIDv7 Migration | **PROVED REAL** | `docker-compose.yml` and `.github/workflows/ci.yml` updated to `image: postgres:18`. Deleted polyfill function `ensure_uuidv7_exists()` from `backend/alembic/env.py`. Verified PostgreSQL 18.7 native `SELECT uuidv7()` generating valid UUIDs without extensions. Migration test on empty DB: fresh `alembic upgrade head` (14 tables created), `alembic check` ("No new upgrade operations detected. 100% in sync"), `alembic downgrade base` (all tables cleanly dropped), `alembic upgrade head` (14 tables recreated). Ran full test suite in container: **102 passed, 0 skipped, 0 failed in 45.76s**. |
+| **2** | Live Streaming Path & Worker Proof | **PROVED REAL** | Executed `backend/scripts/live_streaming_proof.py`: Suspicious tx created via `POST /api/v1/transactions` ONLY (id `01a1d4f1-f01a-7f71-86ac-b5adedf54304`, $14,850.00, RU) $\to$ atomic outbox event recorded (`01a1d4f1-f01c-76fc-87f9-e8b76051c563`, status `pending`) $\to$ published to Redpanda topic `transactions.created` $\to$ consumed by `sentinelx-stream-consumer` $\to$ scored `84/100 (HIGH)` $\to$ alert auto-created (`01a1d4f1-f4c1-7dc1-b80a-10921453f659`, reason codes `['AMT_ANOMALY', 'NEW_RECV_HIGH_AMT', 'IMPOSSIBLE_TRAVEL', 'ML_CLASSIFIER']`). Celery beat logged scheduled task `escalate-stale-alerts-hourly` and Celery worker logged successful execution in 0.00488s. Frontend verified serving HTTP 200 on `/`. |
+| **3** | Image Security, Non-Root & Volume Persistence | **PROVED REAL** | Inspected container user: `uid=10001(sentinelx) gid=10001(sentinelx)`. Searched entire filesystem inside image: `find / -name ".env"` returned 0 files. `docker history sentinelx-api:latest` verified 0 secrets in layers. Image size: content 191 MB, on-disk 832 MB. Executed `docker compose down` and `docker compose up -d`: verified all 2 transactions, 1 alert, 1 user, and 2 outbox events persisted intact across container destruction. |
+| **4** | ML Evidence & Model Card Comparative Table | **PROVED REAL** | Evaluated on identical chronologically partitioned held-out test split (298 samples, 15 fraud, prevalence 5.03%, label noise 1.0%): **Rules-Only Baseline** (Precision: 1.0000, Recall: 0.1333, F1: 0.2353, ROC-AUC: 0.7416, PR-AUC: 0.2962, CM: 283 TN, 0 FP, 13 FN, 2 TP); **Ablation without current_amount** (Precision: 0.5417, Recall: 0.8667, F1: 0.6667, ROC-AUC: 0.9651, PR-AUC: 0.8431, CM: 272 TN, 11 FP, 2 FN, 13 TP); **Hybrid (60/40)** (Precision: 0.8333, Recall: 0.3333, F1: 0.4762, ROC-AUC: 0.9635, PR-AUC: 0.7715, CM: 282 TN, 1 FP, 10 FN, 5 TP); **ML-Only (RandomForest)** (Precision: 0.5417, Recall: 0.8667, F1: 0.6667, ROC-AUC: 0.9764, PR-AUC: 0.8356, CM: 272 TN, 11 FP, 2 FN, 13 TP). Documented table and plain verdict in `docs/MODEL_CARD.md`: ML decisively beats rules by catching 86.67% of fraud vs 13.33% by rules alone. |
+| **5** | Dockerized API Load Testing (Sync vs Async Streaming) | **PROVED REAL** | Executed `backend/scripts/docker_load_test.py` against live containerized API (`sentinelx-api` on `http://127.0.0.1:8000`). Tested 100 requests @ 8 concurrency: **Synchronous Scoring**: 10.28 req/s, duration 9.72s, 0 errors, p50=768.74ms, p90=878.85ms, p95=890.47ms, p99=938.84ms, max=962.0ms. **Async Streaming Ingestion** (`X-Async-Scoring: true`): 41.42 req/s, duration 2.41s, 0 errors, p50=171.89ms, p90=280.02ms, p95=308.41ms, p99=342.90ms, max=345.31ms. Throughput scaled 4.0x and median latency dropped 4.5x. Removed historical "316 ms" note from `docs/PERFORMANCE.md` and updated host specs. |
+| **6** | Playwright Production UI Screenshots | **PROVED REAL** | Automated Playwright script (`scripts/capture_screenshots.js`) executed with Edge (`msedge`) against live stack at `http://127.0.0.1:8000`. Captured all 6 production UI screenshots into `docs/screenshots/`: `login.png` (73,938 bytes), `dashboard.png` (57,366 bytes), `transactions_risk_drawer.png` (173,099 bytes), `alerts.png` (47,728 bytes), `investigation_timeline.png` (41,252 bytes), `network_graph.png` (147,340 bytes). Embedded high-resolution screenshots into `README.md`. |
+| **7** | Documentation, Hardening, CI & Release v1.0.2 | **PROVED REAL** | Synchronized `README.md`, `docs/PROGRESS.md`, `docs/MODEL_CARD.md`, `docs/PERFORMANCE.md`. Verified `ruff check .` (0 errors), Pytest test suite (102 passed, 0 skipped, 0 failed). Opened PR #18, verified green CI, merged to `main`, tagged `v1.0.2`. Reminded user regarding verification of temporary `trust` entries in `pg_hba.conf`. |

@@ -102,6 +102,24 @@ flowchart TD
 
 ---
 
+## 📸 Production Intelligence Dashboard
+
+The SentinelX operations dashboard is built exclusively with vanilla HTML5, CSS3, and JavaScript, rendering complex financial intelligence and live topology graphs without external dependencies or build tooling:
+
+| Executive Overview | Transaction Risk Inspection Drawer |
+|:---:|:---:|
+| ![Executive Dashboard](docs/screenshots/dashboard.png) | ![Transaction Risk Drawer](docs/screenshots/transactions_risk_drawer.png) |
+
+| Force-Directed Mule Ring Graph | Real-Time Alerts Triage Board |
+|:---:|:---:|
+| ![Fraud Network Graph](docs/screenshots/network_graph.png) | ![Alerts Triage](docs/screenshots/alerts.png) |
+
+| Investigation Dossier & Notes Timeline | Secure Role-Based Authentication |
+|:---:|:---:|
+| ![Investigation Timeline](docs/screenshots/investigation_timeline.png) | ![Login Screen](docs/screenshots/login.png) |
+
+---
+
 ## 🚀 Quickstart in 3 Minutes
 
 ### 1. Clone & Set Up Environment
@@ -259,10 +277,10 @@ pytest backend/tests/test_integration_real.py -v -m "integration"
 ruff check .
 ```
 
-### Real Test Execution Results
+### Real Test Execution Results (PostgreSQL 18 inside Docker)
 ```
-TOTAL: 3,130 statements, 448 missed, 85.69% coverage
-98 passed, 2 skipped, 2 deselected, 1 warning in 76.06s
+102 passed, 0 skipped, 0 failed in 45.76s
+Coverage: 85.69% (target: >=80%)
 All checks passed! (0 linter errors)
 ```
 
