@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18
     container_name: sentinelx-postgres
     environment:
       POSTGRES_USER: postgres
@@ -9,9 +9,9 @@ services:
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d sentinelx"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d sentinelx" ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -25,7 +25,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -57,7 +57,7 @@ services:
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "health"]
+      test: [ "CMD", "rpk", "cluster", "health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,7 +68,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sentinelx-api
-    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "backend"]
+    command: [ "python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "backend" ]
     ports:
       - "127.0.0.1:8000:8000"
     environment:
@@ -93,7 +93,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sentinelx-outbox-publisher
-    command: ["python", "backend/scripts/run_outbox_publisher.py"]
+    command: [ "python", "backend/scripts/run_outbox_publisher.py" ]
     healthcheck:
       disable: true
     environment:
@@ -115,7 +115,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sentinelx-stream-consumer
-    command: ["python", "backend/scripts/run_stream_consumer.py"]
+    command: [ "python", "backend/scripts/run_stream_consumer.py" ]
     healthcheck:
       disable: true
     environment:
@@ -135,7 +135,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sentinelx-celery-worker
-    command: ["celery", "-A", "app.celery_app", "worker", "-l", "info"]
+    command: [ "celery", "-A", "app.celery_app", "worker", "-l", "info" ]
     healthcheck:
       disable: true
     environment:
@@ -155,7 +155,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sentinelx-celery-beat
-    command: ["celery", "-A", "app.celery_app", "beat", "-l", "info"]
+    command: [ "celery", "-A", "app.celery_app", "beat", "-l", "info" ]
     healthcheck:
       disable: true
     environment:
