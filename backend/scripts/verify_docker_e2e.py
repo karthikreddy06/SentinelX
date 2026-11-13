@@ -8,7 +8,6 @@ Runs end-to-end verification inside running containers:
 5. Scores suspicious transaction, verifying high risk score and automatic alert generation
 6. Queries /api/v1/alerts to prove alert raised and tracked
 """
-import os
 import secrets
 import sys
 import uuid
@@ -173,7 +172,7 @@ def main():
         sys.exit(1)
 
     score_susp_data = score_susp_resp.json()
-    print(f"[OK] 5. Suspicious transaction scored successfully:")
+    print("[OK] 5. Suspicious transaction scored successfully:")
     print(f"     Risk Score: {score_susp_data['score']}/100")
     print(f"     Risk Level: {score_susp_data['level'].upper()}")
     print(f"     Engine Version: {score_susp_data.get('engine_version')}")
@@ -199,7 +198,7 @@ def main():
         sys.exit(1)
 
     alert = matching_alerts[0]
-    print(f"[OK] 6. Fraud Alert Raised and Verified in Alert Management Engine:")
+    print("[OK] 6. Fraud Alert Raised and Verified in Alert Management Engine:")
     print(f"     Alert ID: {alert['id']}")
     print(f"     Severity: {alert['severity'].upper()}")
     print(f"     Status: {alert['status'].upper()}")
