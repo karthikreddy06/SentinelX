@@ -81,6 +81,11 @@ def create_transaction_endpoint(
         max_length=100,
         description="Unique client idempotency key (1-100 characters).",
     ),
+    x_async_scoring: bool = Header(
+        False,
+        alias="X-Async-Scoring",
+        description="If true, score asynchronously via streaming outbox instead of synchronous inline scoring.",
+    ),
     current_user: User = Depends(CAN_WRITE_TRANSACTIONS),
     db: Session = Depends(get_db),
 ) -> TransactionResponse:
@@ -92,7 +97,7 @@ def create_transaction_endpoint(
         )
         if not is_created:
             response.status_code = status.HTTP_200_OK
-        elif settings.FRAUD_SCORING_ENABLED:
+        elif settings.FRAUD_SCORING_ENABLED and not x_async_scoring:
             score_transaction(
                 db=db,
                 transaction_id=transaction.id,
