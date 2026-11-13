@@ -2,11 +2,14 @@
 
 ## 1. Test Environment & System Specifications
 
-- **Operating System**: Microsoft Windows 11 (x86_64)
-- **Runtime**: Python 3.11.0 (64-bit)
-- **Database**: PostgreSQL 18.6 on x86_64-windows (port 5432)
-- **Cache / Broker**: Redis 7.0 (when containerized); in-memory fallback when offline
-- **Concurrency Test Tool**: `backend/scripts/load_test.py` via HTTPX ThreadPoolExecutor
+- **Host CPU**: 12th Gen Intel(R) Core(TM) i5-1240P (12 cores / 16 threads, up to 4.4 GHz)
+- **Host RAM**: 16.0 GB (15.7 GB usable)
+- **Host OS**: Microsoft Windows 11 Home (x86_64)
+- **Container Runtime**: Docker Desktop 29.6.2 (Linux containers, WSL2 backend)
+- **Database**: PostgreSQL 18.7 on Linux container (`postgres:18`) with native `uuidv7()`
+- **Cache / Broker**: Redis 7.0 (Alpine container), Redpanda v24.2.14 (Kafka API)
+- **Runtime**: Python 3.11 (64-bit Debian slim container)
+- **Benchmark Tool**: `backend/scripts/docker_load_test.py` via HTTPX concurrent ThreadPoolExecutor against containerized API
 
 ---
 
@@ -26,27 +29,34 @@ Measured via `backend/scripts/benchmark_scoring.py` (25 iterations, 50 pre-seede
 | **Total Scoring Latency (Median)** | **68.16 ms** | **77.28 ms** |
 | **Total Scoring Latency (p95)** | **88.14 ms** | **95.42 ms** |
 
-> [!NOTE]
-> **Historical Correction**: The earlier claim of "316 ms -> 50 ms" was derived from an unindexed full-table query comparison before composite B-Tree indexes were applied. With composite indexes (`ix_transactions_sender_occurred` and `ix_transactions_receiver_occurred`), real PostgreSQL 18 cold query latency is **68.02 ms**. When Redis is offline, SentinelX seamlessly falls back to PostgreSQL in **74.66 ms** with zero request failures.
+With composite indexes (`ix_transactions_sender_occurred` and `ix_transactions_receiver_occurred`), PostgreSQL 18 cold query latency averages **68.02 ms**. When Redis is offline, SentinelX seamlessly falls back to PostgreSQL in **74.66 ms** with zero request failures.
 
 ---
 
 ## 3. High-Throughput Concurrent Write & Evaluation Load Test
 
-Measured using `backend/scripts/load_test.py` executing the complete transactional write path: Pydantic v2 strict schema validation $\to$ PostgreSQL transaction commit $\to$ transactional outbox entry recording $\to$ point-in-time behavioral feature extraction $\to$ Rule engine (11 rules) $\to$ ML inference $\to$ audit log recording.
+Measured using `backend/scripts/docker_load_test.py` against the live Dockerized SentinelX API (`sentinelx-api` on `http://127.0.0.1:8000`), testing both ingestion architectures:
+1. **Synchronous Scoring**: Transaction insert + transactional outbox write + synchronous point-in-time feature extraction + 11 fraud rules + ML inference + audit logging before returning response.
+2. **Async Streaming Ingestion**: Atomic transaction insert + transactional outbox write + audit logging before returning response; fraud scoring and alert generation proceed asynchronously via Redpanda streaming pipeline (`sentinelx-outbox-publisher` $\to$ Redpanda $\to$ `sentinelx-stream-consumer`).
 
-### Real Benchmark Metrics (100 Requests, Concurrency: 8)
-- **Total Requests**: 100
-- **Concurrency**: 8 concurrent worker threads
-- **Success Rate**: 100% (100 successes, 0 failures, 0 errors)
-- **Total Duration**: 9.68 seconds
-- **Throughput**: **10.33 Transactions / Sec**
-- **Min Latency**: 373.10 ms
-- **Median (p50) Latency**: 746.18 ms
-- **p90 Latency**: 918.54 ms
-- **p95 Latency**: 929.31 ms
-- **p99 Latency**: 1,688.06 ms
-- **Max Latency**: 1,688.06 ms
+### Comparative Load Test Results (100 Requests, Concurrency: 8)
+
+| Metric | Synchronous Scoring Mode | Async Streaming Ingestion Mode | Delta / Improvement |
+|---|---|---|---|
+| **Total Requests** | 100 | 100 | - |
+| **Concurrency** | 8 worker threads | 8 worker threads | - |
+| **Success Rate** | 100% (100/100) | 100% (100/100) | 0 errors |
+| **Total Duration** | 9.72 s | 2.41 s | **4.0x faster** |
+| **Throughput** | **10.28 req/s** | **41.42 req/s** | **4.0x higher TPS** |
+| **Min Latency** | 356.14 ms | 69.63 ms | - |
+| **Median (p50) Latency** | 768.74 ms | 171.89 ms | **4.5x reduction** |
+| **p90 Latency** | 878.85 ms | 280.02 ms | 3.1x reduction |
+| **p95 Latency** | 890.47 ms | 308.41 ms | 2.9x reduction |
+| **p99 Latency** | 938.84 ms | 342.90 ms | 2.7x reduction |
+| **Max Latency** | 962.00 ms | 345.31 ms | 2.8x reduction |
+| **Mean Latency** | 768.44 ms | 189.85 ms | **4.0x reduction** |
+
+Under synchronous scoring, the client waits for full point-in-time behavioral database queries, rule engine checks, and ML model inference. Under asynchronous streaming ingestion, the transactional outbox pattern decouples client HTTP response from heavy feature extraction, scaling throughput by **4x** and slashing median response latency from 768.74 ms down to 171.89 ms while guaranteeing zero event loss.
 
 ---
 

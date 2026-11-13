@@ -48,38 +48,27 @@
 
 ## Evaluation Metrics (Held-Out Test Set)
 
-Evaluated on chronologically partitioned held-out test data (Train 70%, Validation 15%, Test 15%):
+Evaluated on chronologically partitioned held-out test data (Train 70% [n=1390], Validation 15% [n=298], Test 15% [n=298]):
+- **Test Set Size**: 298 transactions
+- **Fraud Prevalence (Ground Truth)**: `5.03%` (15 fraud cases, 283 legitimate cases)
+- **Label Noise Injection**: `1.0%` random label flipping (realistic real-world noise)
+- **Temporal Leakage Audit**: PASSED (`max(train_ts) <= min(val_ts) <= min(test_ts)`)
 
-| Metric | Score |
-|---|---|
-| **Precision** | `0.5417` |
-| **Recall** | `0.8667` |
-| **F1 Score** | `0.6667` |
-| **ROC-AUC** | `0.9764` |
-| **PR-AUC (Avg Precision)** | `0.8356` |
+### Side-by-Side Model Comparison on Held-Out Test Set
 
-### Confusion Matrix
-- **True Negatives (TN)**: 272
-- **False Positives (FP)**: 11
-- **False Negatives (FN)**: 2
-- **True Positives (TP)**: 13
+| Approach | Precision | Recall | F1 Score | ROC-AUC | PR-AUC | Confusion Matrix (TN / FP / FN / TP) |
+|---|---|---|---|---|---|---|
+| **Rules-Only Baseline** (10 rules) | `1.0000` | `0.1333` | `0.2353` | `0.7416` | `0.2962` | `283 / 0 / 13 / 2` |
+| **Ablation** (ML without `current_amount`) | `0.5417` | `0.8667` | `0.6667` | `0.9651` | `0.8431` | `272 / 11 / 2 / 13` |
+| **Hybrid Blend** (60% Rules + 40% ML) | `0.8333` | `0.3333` | `0.4762` | `0.9635` | `0.7715` | `282 / 1 / 10 / 5` |
+| **ML-Only (RandomForest)** | `0.5417` | `0.8667` | `0.6667` | `0.9764` | `0.8356` | `272 / 11 / 2 / 13` |
 
----
-
-## Benchmark Comparisons & Ablation
-
-### 1. Rules-Only Baseline (10 Transparent Rules)
-- **Precision**: `1.0000`
-- **Recall**: `0.1333`
-- **F1 Score**: `0.2353`
-- *Observation*: The rules-only baseline achieves 100% precision on rigid patterns (e.g. structuring, impossible travel), but misses 86.7% of stealth/burst/card-testing fraud.
-
-### 2. Feature Ablation (Model trained without `current_amount`)
-- **Precision**: `0.5417`
-- **Recall**: `0.8667`
-- **F1 Score**: `0.6667`
-- **ROC-AUC**: `0.9651`
-- *Observation*: Behavioral features (velocities, deviation z-scores, device/IP novelty, structuring counts) retain 96.5% ROC-AUC without any knowledge of raw transaction amount, confirming the model does not depend on simplistic amount thresholds.
+### Plain Evaluation: Does ML Beat Rules?
+**Yes, ML decisively beats the rules-only baseline for fraud detection.**
+- **The Failure of Rules-Only**: While the rules-only baseline achieves 100% precision on rigid patterns (impossible travel, exact structuring thresholds), it suffers from an abysmal **13.33% recall** — missing 13 out of 15 fraud incidents (86.7% fraud missed).
+- **The Strength of ML**: The supervised ML model catches **86.67% of all fraud incidents** (13 out of 15 caught) while maintaining 54.17% precision and 0.8356 PR-AUC.
+- **Independence from Raw Amount**: The feature ablation model (trained without `current_amount`) achieves identical recall (86.67%) and 0.9651 ROC-AUC, proving that ML learns non-linear behavioral relationships (velocity bursts, z-score deviations, rapid counterparty hops) rather than overfitting to large transaction amounts.
+- **The Role of the Hybrid Model**: In production, the Hybrid model provides a configurable knob: when investigator bandwidth is constrained, raising the threshold or weighting rules reduces false positives (Hybrid yields 83.33% precision with only 1 false alarm).
 
 ### 3. Precision-Recall Curve Across Thresholds
 | Operating Threshold | Precision | Recall | F1 Score |
