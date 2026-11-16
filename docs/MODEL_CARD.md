@@ -64,11 +64,11 @@ Evaluated on chronologically partitioned held-out test data (Train 70% [n=1390],
 | **ML-Only (RandomForest)** | `0.5417` | `0.8667` | `0.6667` | `0.9764` | `0.8356` | `272 / 11 / 2 / 13` |
 
 ### Plain Evaluation: Does ML Beat Rules?
-**Yes, ML decisively beats the rules-only baseline for fraud detection.**
-- **The Failure of Rules-Only**: While the rules-only baseline achieves 100% precision on rigid patterns (impossible travel, exact structuring thresholds), it suffers from an abysmal **13.33% recall** — missing 13 out of 15 fraud incidents (86.7% fraud missed).
-- **The Strength of ML**: The supervised ML model catches **86.67% of all fraud incidents** (13 out of 15 caught) while maintaining 54.17% precision and 0.8356 PR-AUC.
-- **Independence from Raw Amount**: The feature ablation model (trained without `current_amount`) achieves identical recall (86.67%) and 0.9651 ROC-AUC, proving that ML learns non-linear behavioral relationships (velocity bursts, z-score deviations, rapid counterparty hops) rather than overfitting to large transaction amounts.
-- **The Role of the Hybrid Model**: In production, the Hybrid model provides a configurable knob: when investigator bandwidth is constrained, raising the threshold or weighting rules reduces false positives (Hybrid yields 83.33% precision with only 1 false alarm).
+On this synthetic held-out test set, ML achieves higher recall than the deterministic rules-only baseline:
+- **Rules-Only Baseline**: While the rules-only baseline achieves 1.0000 precision on rigid heuristics (impossible travel, structuring thresholds), its recall is limited to **13.33%** (detecting 2 and missing 13 out of 15 synthetic fraud cases).
+- **ML-Only (RandomForest)**: Detects **86.67% of synthetic fraud cases** (13 out of 15) with 0.5417 precision, 0.6667 F1, and 0.8356 PR-AUC on the synthetic evaluation set.
+- **Hybrid Blend Caveat**: On this test set, the hybrid blend (60% rules + 40% ML) scores **worse than ML-only** (F1 `0.4762` vs `0.6667`, recall `33.33%` vs `86.67%`). The 60/40 weighting scheme is an unvalidated heuristic and was not cross-validated across diverse banking portfolios. Blending weights and decision thresholds must be empirically tuned by institutions for their operational capacity.
+- **Ablation Interpretation**: The feature ablation model (trained without `current_amount`) maintains recall (86.67%) and 0.9651 ROC-AUC, which indicates that model performance does not depend on raw transaction amount alone. This does not imply resilience against adversarial evasion or unseen fraud typologies.
 
 ### 3. Precision-Recall Curve Across Thresholds
 | Operating Threshold | Precision | Recall | F1 Score |

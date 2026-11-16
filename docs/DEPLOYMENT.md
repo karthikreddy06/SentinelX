@@ -11,7 +11,7 @@ In a complete production deployment, SentinelX runs as an orchestrated multi-ser
 | Service | Container / Process | Description | Port | Health Check |
 |---|---|---|---|---|
 | **API** | `sentinelx-api` | FastAPI REST API & Vanilla UI | `8000` | `GET /health` |
-| **PostgreSQL** | `sentinelx-postgres` | Relational database (PostgreSQL 17/18) | `5432` | `pg_isready` |
+| **PostgreSQL** | `sentinelx-postgres` | Relational database (PostgreSQL 18) | `5432` | `pg_isready` |
 | **Redis** | `sentinelx-redis` | Cache, Token Blocklist & Celery Broker | `6379` | `redis-cli ping` |
 | **Redpanda** | `sentinelx-redpanda` | Kafka-compatible event streaming engine | `9092` | `rpk cluster health` |
 | **Outbox Publisher** | `sentinelx-outbox-publisher` | Polling outbox daemon with `SKIP LOCKED` | N/A | Process supervisor |
@@ -64,9 +64,8 @@ docker compose exec api alembic upgrade head
 
 ### Step 4: Create Initial Administrator Account
 ```bash
-docker compose exec api python backend/scripts/create_admin.py \
-  --email "admin@yourcompany.com" \
-  --password "YourStrongPassword123!"
+# Prompts securely for password without echo, or uses ADMIN_PASSWORD from .env
+docker compose exec -it api python backend/scripts/create_admin.py --email "admin@yourcompany.com"
 ```
 
 ### Step 5: (Optional) Seed Initial Demo Dataset
@@ -113,7 +112,7 @@ Render offers free web services and managed PostgreSQL:
    - In the Render shell console:
      ```bash
      alembic upgrade head
-     python backend/scripts/create_admin.py --email admin@example.com --password AdminPassword123!
+     python backend/scripts/create_admin.py --email admin@example.com
      ```
 
 ### Option B: Railway.app

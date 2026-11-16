@@ -56,7 +56,13 @@ Measured using `backend/scripts/docker_load_test.py` against the live Dockerized
 | **Max Latency** | 962.00 ms | 345.31 ms | 2.8x reduction |
 | **Mean Latency** | 768.44 ms | 189.85 ms | **4.0x reduction** |
 
-Under synchronous scoring, the client waits for full point-in-time behavioral database queries, rule engine checks, and ML model inference. Under asynchronous streaming ingestion, the transactional outbox pattern decouples client HTTP response from heavy feature extraction, scaling throughput by **4x** and slashing median response latency from 768.74 ms down to 171.89 ms while guaranteeing zero event loss.
+Under synchronous scoring, the client waits for full point-in-time behavioral database queries, rule engine checks, and ML model inference before receiving a response. Under asynchronous streaming ingestion, the transactional outbox pattern decouples client HTTP response from heavy feature extraction, increasing throughput by **4.0x** and reducing median response latency from 768.74 ms down to 171.89 ms.
+
+> [!NOTE]
+> **Benchmark Methodology & Non-Like-for-Like Comparison**:
+> These metrics reflect a single local benchmark run (100 requests, concurrency: 8) on the specific developer hardware detailed above. Crucially, the two modes are **not a like-for-like measurement**:
+> - **Synchronous Scoring** measures end-to-end latency: database insert, outbox record, point-in-time feature computation, 11 deterministic rules, and ML inference prior to responding.
+> - **Async Streaming Ingestion** measures only the ingestion boundary: transaction commit and outbox event recording. All downstream feature calculation, fraud scoring, and alert creation take place asynchronously in background stream workers.
 
 ---
 
