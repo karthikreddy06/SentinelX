@@ -1,8 +1,45 @@
-.venv/
+# Environment & Secrets
 .env
+.env.*
+!.env.example
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Python & Caches
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.ruff_cache/
+
+# Testing & Coverage
 .pytest_cache/
 .coverage
 htmlcov/
-*.egg-info/
+test-results/
+
+# Node & Package Managers
+node_modules/
+npm-debug.log*
+
+# Logs & Diagnostics
+*.log
+logs/
+
+# Machine Learning Artifacts Policy
+# Ignore newly generated/retrained model artifacts and test datasets, but preserve base release model
+ml/artifacts/*.joblib
+ml/artifacts/*.json
+!ml/artifacts/sentinelx_ml_v1.0.0.joblib
+!ml/artifacts/sentinelx_ml_v1.0.0.json
+ml/data/*.csv
+ml/scratch/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
