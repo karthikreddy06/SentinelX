@@ -44,8 +44,8 @@ Access to resources is enforced via strict FastAPI dependency injection (`requir
 | Endpoint Route | Analyst | Investigator | Admin | Description |
 |---|:---:|:---:|:---:|---|
 | `GET /api/v1/transactions` | ✅ | ✅ | ✅ | View and filter transactions |
-| `POST /api/v1/transactions` | ❌ | ❌ | ✅ | Create new transaction (API client / admin) |
-| `POST /api/v1/transactions/{id}/cancel` | ❌ | ❌ | ✅ | Cancel pending transaction |
+| `POST /api/v1/transactions` | ❌ | ✅ | ✅ | Create new transaction |
+| `POST /api/v1/transactions/{id}/cancel` | ❌ | ✅ | ✅ | Cancel pending transaction |
 | `GET /api/v1/alerts` | ✅ | ✅ | ✅ | View and filter alerts |
 | `PATCH /api/v1/alerts/{id}` | ❌ | ✅ | ✅ | Acknowledge, investigate, resolve, dismiss |
 | `GET /api/v1/investigations` | ✅ | ✅ | ✅ | View cases |

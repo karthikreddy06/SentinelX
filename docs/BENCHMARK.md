@@ -1,33 +1,33 @@
 # SentinelX Performance Benchmark: Scoring Path Latency
 
-This document details the real, measured performance benchmarks for SentinelX's fraud feature extraction and scoring hot path, comparing direct PostgreSQL querying (cold / cache miss) against Redis in-memory caching (hot / cache hit), including the optimizations introduced in Phase 8B hardening.
+This document details measured performance benchmarks for SentinelX's fraud feature extraction and scoring path, comparing direct PostgreSQL 18 querying (cold / cache miss) against Redis in-memory caching (hot / cache hit).
 
 ---
 
 ## 1. Environment & Workload
 
-- **OS**: Windows 11
-- **Python**: 3.11.0 (CPython)
-- **Database**: PostgreSQL 18 with compound indexes (`ix_transactions_sender_occurred`, `ix_transactions_receiver_occurred`)
-- **Cache**: Redis 7.0 on `127.0.0.1:6379` with graceful fallback and connection cooldown
-- **Workload**: Real point-in-time feature extraction (17 features including historical statistics, z-score, velocity windows, receiver sets, IP/device anomaly checks) + hybrid rules & ML inference (`RandomForest` + `IsolationForest`).
-- **Sender History Depth**: 50 pre-seeded historical transactions.
-- **Sample Size**: 25 measured iterations.
+- **Host OS**: Microsoft Windows 11
+- **Runtime**: Python 3.11 (64-bit)
+- **Database**: PostgreSQL 18 with composite B-Tree indexes (`ix_transactions_sender_occurred`, `ix_transactions_receiver_occurred`)
+- **Cache**: Redis 7.0 with automatic graceful fallback
+- **Workload**: Point-in-time feature extraction (17 behavioral features) + hybrid rules (11 rules) + ML inference (`RandomForest` + `IsolationForest`)
+- **Sender History Depth**: 50 pre-seeded historical transactions per account
+- **Sample Size**: 25 measured iterations
+- **Benchmark Script**: `backend/scripts/benchmark_scoring.py`
 
 ---
 
-## 2. Benchmark Evolution & Measured Latency
+## 2. Measured Scoring Latency
 
-### Phase 8B Hardened Direct DB Path vs Cache
-Following Phase 8B query optimization (caching `night_tx_count` in profile, replacing unbounded historical table scans with 24-hour index range slices):
+Measured via `backend/scripts/benchmark_scoring.py`:
 
-| Metric | Unoptimized Cold (Pre-8B) | Optimized DB Direct (Post-8B) | Redis Cache Hit (Hot) |
+| Metric | PostgreSQL 18 Direct (Cold / Cache Miss) | Redis Cache Hit (Hot Path) | Redis Offline (Graceful DB Fallback) |
 |---|---|---|---|
-| **Mean Latency** | 316.51 ms | **50.33 ms** (6.3x faster DB) | **45.06 ms** |
-| **Median Latency (p50)** | 306.65 ms | **46.99 ms** (6.5x faster DB) | **37.57 ms** |
-| **95th Percentile (p95)** | 391.91 ms | **76.81 ms** (5.1x faster DB) | **70.64 ms** |
+| **Mean Latency** | **68.02 ms** | **45.06 ms** | **74.66 ms** *(incl. timeout)* |
+| **Median Latency (p50)** | **68.16 ms** | **37.57 ms** | **77.28 ms** |
+| **95th Percentile (p95)** | **88.14 ms** | **70.64 ms** | **95.42 ms** |
 
-*Key Takeaway*: Direct database scoring latency improved from over 300ms down to ~50ms, meaning even under complete cache misses or Redis degradation, transactions are evaluated in < 51ms.
+*Takeaway*: With composite B-Tree indexes on `(sender_account_id, occurred_at)` and `(receiver_account_id, occurred_at)`, direct PostgreSQL 18 evaluation averages ~68 ms on this benchmark. When Redis is online, caching reduces median scoring latency to ~38 ms. If Redis is offline or degraded, the platform falls back to PostgreSQL in ~75 ms with zero request failures.
 
 ---
 
@@ -43,4 +43,4 @@ Following Phase 8B query optimization (caching `night_tx_count` in profile, repl
    - TTL: 86,400 seconds (24 hours).
 
 3. **Hybrid Distributed Rate Limiter (`rl:req:{key}`, `rl:lockout:{key}`)**:
-   - Multi-worker safe distributed rate limiter with automatic thread-safe in-memory sliding window fallback and cooldown retry when Redis is unreachable.
+   - Multi-worker safe distributed rate limiter with automatic thread-safe in-memory sliding window fallback when Redis is unreachable.
