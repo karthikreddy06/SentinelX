@@ -1,7 +1,7 @@
 /**
  * SentinelX — Real-Time Fraud Intelligence Dashboard
  * Pure Vanilla JavaScript (Zero External Frameworks / Zero Dependencies)
- */
+ *
 
 // --- HTML SANITIZATION UTILITY ---
 function escapeHtml(str) {
